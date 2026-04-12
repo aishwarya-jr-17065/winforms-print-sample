@@ -91,9 +91,10 @@ public partial class MainForm : Form
             _webView.NavigateToString(html);
             await navTask;
 
-            // Show the system print dialog so the user can choose printer / settings.
-            // CoreWebView2.PrintAsync renders via Chromium, giving pixel-perfect output.
-            await _webView.CoreWebView2.PrintAsync(printSettings: null);
+            // ShowPrintUI opens the system print dialog so the user can choose
+            // printer and settings. PrintAsync(null) silently prints without any
+            // dialog, which is why ShowPrintUI must be used here instead.
+            _webView.CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.System);
         }
         catch (Exception ex)
         {
