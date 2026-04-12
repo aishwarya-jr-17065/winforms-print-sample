@@ -10,7 +10,8 @@ partial class MainForm
     // Controls
     private System.Windows.Forms.Label lblHtmlContent;
     private System.Windows.Forms.TextBox txtHtmlContent;
-    private System.Windows.Forms.Button btnPrint;
+    private System.Windows.Forms.Button btnSystemPrint;
+    private System.Windows.Forms.Button btnBrowserPrint;
     private System.Windows.Forms.Panel pnlBottom;
 
     /// <summary>
@@ -68,7 +69,7 @@ partial class MainForm
                 "</head>\r\n" +
                 "<body>\r\n" +
                 "  <h1>Hello, World!</h1>\r\n" +
-                "  <p>This HTML will be printed with high fidelity using WebView2 (Chromium).</p>\r\n" +
+                "  <p>This HTML will be printed using WebView2 (Chromium).</p>\r\n" +
                 "</body>\r\n" +
                 "</html>",
         };
@@ -81,19 +82,31 @@ partial class MainForm
             Padding = new Padding(8),
         };
 
-        btnPrint = new System.Windows.Forms.Button
+        // System Print button (rightmost)
+        btnSystemPrint = new System.Windows.Forms.Button
         {
-            Text = "Print",
-            Size = new Size(100, 36),
-            Anchor = AnchorStyles.Right | AnchorStyles.Bottom,
+            Text = "System Print",
+            Size = new Size(120, 36),
             Font = new Font("Segoe UI", 10f),
+            Anchor = AnchorStyles.Right | AnchorStyles.Top,
         };
-        // Position within the bottom panel (right-aligned)
-        btnPrint.Location = new Point(pnlBottom.Width - btnPrint.Width - 12, 8);
-        btnPrint.Anchor = AnchorStyles.Right | AnchorStyles.Top;
-        btnPrint.Click += btnPrint_Click;
+        btnSystemPrint.Location = new Point(pnlBottom.Width - btnSystemPrint.Width - 12, 8);
+        btnSystemPrint.Click += btnSystemPrint_Click;
 
-        pnlBottom.Controls.Add(btnPrint);
+        // Browser Print button (left of System Print)
+        btnBrowserPrint = new System.Windows.Forms.Button
+        {
+            Text = "Browser Print",
+            Size = new Size(130, 36),
+            Font = new Font("Segoe UI", 10f),
+            Anchor = AnchorStyles.Right | AnchorStyles.Top,
+        };
+        btnBrowserPrint.Location = new Point(
+            pnlBottom.Width - btnSystemPrint.Width - btnBrowserPrint.Width - 20, 8);
+        btnBrowserPrint.Click += btnBrowserPrint_Click;
+
+        pnlBottom.Controls.Add(btnSystemPrint);
+        pnlBottom.Controls.Add(btnBrowserPrint);
 
         // ── Form ─────────────────────────────────────────────────────────────
         AutoScaleDimensions = new SizeF(7F, 15F);
