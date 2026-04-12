@@ -12,6 +12,7 @@ partial class MainForm
     private System.Windows.Forms.TextBox txtHtmlContent;
     private System.Windows.Forms.Button btnSystemPrint;
     private System.Windows.Forms.Button btnBrowserPrint;
+    private System.Windows.Forms.Button btnMshtmlPrint;
     private System.Windows.Forms.Panel pnlBottom;
 
     /// <summary>
@@ -82,31 +83,41 @@ partial class MainForm
             Padding = new Padding(8),
         };
 
-        // System Print button (rightmost)
+        // System Print button — docked right (rightmost)
         btnSystemPrint = new System.Windows.Forms.Button
         {
             Text = "System Print",
             Size = new Size(120, 36),
+            Dock = DockStyle.Right,
             Font = new Font("Segoe UI", 10f),
-            Anchor = AnchorStyles.Right | AnchorStyles.Top,
         };
-        btnSystemPrint.Location = new Point(pnlBottom.Width - btnSystemPrint.Width - 12, 8);
         btnSystemPrint.Click += btnSystemPrint_Click;
 
-        // Browser Print button (left of System Print)
+        // Browser Print button — docked right (middle)
         btnBrowserPrint = new System.Windows.Forms.Button
         {
             Text = "Browser Print",
             Size = new Size(130, 36),
+            Dock = DockStyle.Right,
             Font = new Font("Segoe UI", 10f),
-            Anchor = AnchorStyles.Right | AnchorStyles.Top,
         };
-        btnBrowserPrint.Location = new Point(
-            pnlBottom.Width - btnSystemPrint.Width - btnBrowserPrint.Width - 20, 8);
         btnBrowserPrint.Click += btnBrowserPrint_Click;
 
+        // MSHTML Print button — docked right (leftmost of the three)
+        btnMshtmlPrint = new System.Windows.Forms.Button
+        {
+            Text = "MSHTML Print",
+            Size = new Size(130, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnMshtmlPrint.Click += btnMshtmlPrint_Click;
+
+        // Controls are added right-to-left when DockStyle.Right is used:
+        // first added = rightmost. So add System first, then Browser, then MSHTML.
         pnlBottom.Controls.Add(btnSystemPrint);
         pnlBottom.Controls.Add(btnBrowserPrint);
+        pnlBottom.Controls.Add(btnMshtmlPrint);
 
         // ── Form ─────────────────────────────────────────────────────────────
         AutoScaleDimensions = new SizeF(7F, 15F);

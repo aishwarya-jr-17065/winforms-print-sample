@@ -92,6 +92,27 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
+    // MSHTML print button handler — opens preview window using WebBrowser control
+    // ---------------------------------------------------------------------------
+
+    private void btnMshtmlPrint_Click(object sender, EventArgs e)
+    {
+        string html = txtHtmlContent.Text;
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            MessageBox.Show(
+                "Please enter some HTML content to print.",
+                "Empty Content",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        using var mshtmlForm = new MshtmlPrintForm(html);
+        mshtmlForm.ShowDialog(this);
+    }
+
+    // ---------------------------------------------------------------------------
     // Browser print button handler — opens preview window
     // ---------------------------------------------------------------------------
 
