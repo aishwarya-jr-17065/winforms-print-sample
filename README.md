@@ -35,7 +35,7 @@ WinFormsPrintSample\bin\Release\net8.0-windows10.0.19041.0\WinFormsPrintSample.e
 
 1. The main window contains a **multiline text box** pre-filled with a sample HTML document.
 2. Paste or type any HTML you want to print into the text box.
-3. Click **Print** — the app loads the HTML into a hidden WebView2 instance, then calls `CoreWebView2.PrintAsync()` which opens the native Windows print dialog.
+3. Click **Print** — the app loads the HTML into a hidden WebView2 instance, then calls `CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.System)` which opens the native Windows print dialog.
 4. Because WebView2 uses Chromium's high-DPI rendering pipeline, the printout matches what a modern browser produces — pixel-perfect, no blurriness.
 
 ## Project Structure
@@ -52,5 +52,5 @@ WinFormsPrintSample/
 
 - **Target framework**: `net8.0-windows10.0.19041.0`
 - **WebView2 package**: `Microsoft.Web.WebView2` (latest stable release)
-- **Printing**: `CoreWebView2.PrintAsync(null)` — shows the system print dialog with full Chromium rendering fidelity.
+- **Printing**: `CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.System)` — opens the native Windows print dialog. Note: `CoreWebView2.PrintAsync(null)` silently prints without any dialog and must **not** be used when user interaction is needed.
 - A hidden `WebView2` control is added to the form at startup and initialised asynchronously; it is only used for rendering and printing — it is never visible to the user.
