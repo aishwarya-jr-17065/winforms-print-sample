@@ -1,4 +1,5 @@
 # WinForms HTML Print Sample
+<!-- dummy change to verify CI workflow runs on push and PR -->
 
 A .NET 8 Windows Forms application that prints HTML content using the **Microsoft Edge WebView2** (Chromium) runtime. It demonstrates three different print dialog approaches side-by-side and documents their trade-offs.
 
