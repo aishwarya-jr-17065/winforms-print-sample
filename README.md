@@ -42,7 +42,7 @@ WinFormsPrintSample\bin\Release\net8.0-windows10.0.19041.0\WinFormsPrintSample.e
 | **Browser Print** | Opens `BrowserPrintForm` — a dedicated window with a full-size visible WebView2. Click **Print…** inside to open Chromium's browser print dialog, which includes a live print preview. |
 | **MSHTML Print** | Opens `MshtmlPrintForm` — uses the legacy `WebBrowser` (MSHTML/Trident) control. Historically showed IE's print preview; on Windows 10 (post-2022) and Windows 11 the IE UI shell is gone so this behaves identically to the system dialog with no preview. **Provided for comparison only.** |
 
-> See [PRINT-DIALOGS.md](PRINT-DIALOGS.md) for a full comparison of all three approaches including pros, cons, and recommendations.
+> See [PRINT-DIALOG-COMPARISON.md](PRINT-DIALOG-COMPARISON.md) for a full comparison of all three approaches including pros, cons, and recommendations.
 
 ## Print Dialog Comparison (Summary)
 
@@ -64,7 +64,7 @@ WinFormsPrintSample/
 ├── BrowserPrintForm.cs      # Preview window using visible WebView2 + browser dialog
 ├── MshtmlPrintForm.cs       # Legacy WebBrowser (MSHTML/Trident) print window
 └── WinFormsPrintSample.csproj
-PRINT-DIALOGS.md             # Detailed comparison of all three print approaches
+PRINT-DIALOG-COMPARISON.md  # Detailed comparison of all three print approaches
 ```
 
 ## Key Implementation Details
