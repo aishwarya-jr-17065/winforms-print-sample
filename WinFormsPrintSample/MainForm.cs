@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Drawing.Printing;
 using System.Text.RegularExpressions;
 using Microsoft.Web.WebView2.Core;
@@ -130,19 +129,6 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
-    // System print with preview — opens a visible WebView2 preview window that
-    // lets the user see the rendered HTML, then opens the system print dialog.
-    // ---------------------------------------------------------------------------
-
-    private void btnSystemPreviewPrint_Click(object sender, EventArgs e)
-    {
-        if (!TryGetHtml(out string html)) return;
-
-        using var previewForm = new SystemPrintPreviewForm(html, _env!);
-        previewForm.ShowDialog(this);
-    }
-
-    // ---------------------------------------------------------------------------
     // WinForms GDI print — uses PrintDocument + PrintPreviewDialog.
     // Strips HTML tags and renders the plain text via GDI Graphics.
     // This is the classic WinForms printing path, independent of WebView2.
@@ -206,8 +192,9 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
-    // PDF print — generates a PDF from the HTML via WebView2's PrintToPdfAsync,
-    // then opens it with the system default PDF viewer so the user can print.
+    // PDF print — generates a PDF via WebView2's PrintToPdfAsync, then displays
+    // it in an in-app WebView2 PDF viewer (PdfPrintForm) so the user can
+    // review and print without leaving the application.
     // ---------------------------------------------------------------------------
 
     private async void btnPdfPrint_Click(object sender, EventArgs e)
@@ -217,13 +204,14 @@ public partial class MainForm : Form
         btnPdfPrint.Enabled = false;
         btnPdfPrint.Text = "Generating PDF…";
 
+        string? tempPdf = null;
         try
         {
             var navTask = WaitForNavigationAsync(_webView!);
             _webView!.NavigateToString(html);
             await navTask;
 
-            string tempPdf = Path.Combine(
+            tempPdf = Path.Combine(
                 Path.GetTempPath(),
                 $"WinFormsPrintSample_{Guid.NewGuid():N}.pdf");
 
@@ -239,16 +227,12 @@ public partial class MainForm : Form
                 return;
             }
 
-            // Open the PDF with the system default application (e.g. Edge, Adobe Reader).
-            // The user can review the PDF and print from within the viewer.
-            Process.Start(new ProcessStartInfo(tempPdf) { UseShellExecute = true });
-
-            // Best-effort cleanup: delete the temp file after 5 minutes, giving the
-            // PDF viewer enough time to fully load the file before it is removed.
-            _ = Task.Delay(TimeSpan.FromMinutes(5)).ContinueWith(_ =>
-            {
-                try { File.Delete(tempPdf); } catch { /* ignore — OS temp dir is cleaned periodically */ }
-            });
+            // Open the PDF inside the app — PdfPrintForm hosts a visible WebView2
+            // that renders the PDF and lets the user print via the browser dialog.
+            // PdfPrintForm deletes the temp file when it is closed.
+            using var pdfForm = new PdfPrintForm(tempPdf, _env!);
+            pdfForm.ShowDialog(this);
+            tempPdf = null;   // ownership transferred; PdfPrintForm handles cleanup
         }
         catch (Exception ex)
         {
@@ -260,6 +244,13 @@ public partial class MainForm : Form
         }
         finally
         {
+            // Clean up the temp file only if PdfPrintForm was never shown
+            // (i.e. an exception occurred before ShowDialog was called).
+            if (tempPdf is not null)
+            {
+                try { File.Delete(tempPdf); } catch { /* ignore */ }
+            }
+
             btnPdfPrint.Text = "PDF Print";
             btnPdfPrint.Enabled = true;
         }

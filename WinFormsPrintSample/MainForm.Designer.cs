@@ -15,7 +15,6 @@ partial class MainForm
     private System.Windows.Forms.Button btnMshtmlPrint;
     private System.Windows.Forms.Panel pnlBottom;
     private System.Windows.Forms.Panel pnlBottom2;
-    private System.Windows.Forms.Button btnSystemPreviewPrint;
     private System.Windows.Forms.Button btnGdiPrint;
     private System.Windows.Forms.Button btnPdfPrint;
 
@@ -144,16 +143,6 @@ partial class MainForm
         };
         btnGdiPrint.Click += btnGdiPrint_Click;
 
-        // System + Preview button — leftmost of the three
-        btnSystemPreviewPrint = new System.Windows.Forms.Button
-        {
-            Text = "System + Preview",
-            Size = new Size(150, 36),
-            Dock = DockStyle.Right,
-            Font = new Font("Segoe UI", 10f),
-        };
-        btnSystemPreviewPrint.Click += btnSystemPreviewPrint_Click;
-
         pnlBottom2 = new System.Windows.Forms.Panel
         {
             Dock = DockStyle.Bottom,
@@ -164,7 +153,6 @@ partial class MainForm
         // Add right-to-left: first added = rightmost.
         pnlBottom2.Controls.Add(btnPdfPrint);
         pnlBottom2.Controls.Add(btnGdiPrint);
-        pnlBottom2.Controls.Add(btnSystemPreviewPrint);
 
         // ── Form ─────────────────────────────────────────────────────────────
         AutoScaleDimensions = new SizeF(7F, 15F);

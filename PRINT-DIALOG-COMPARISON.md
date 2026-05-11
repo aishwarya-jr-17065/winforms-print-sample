@@ -1,6 +1,6 @@
 # WinForms Print Options — Full Comparison
 
-This document covers all six print approaches demonstrated in the sample.
+This document covers all five print approaches demonstrated in the sample.
 
 ---
 
@@ -25,29 +25,7 @@ The OS-level `PrintDlgEx` dialog. WebView2 uses it only for settings collection,
 
 ---
 
-## 2. System Dialog + Custom Preview (`SystemPrintPreviewForm`)
-
-A `SystemPrintPreviewForm` window holds a **fully visible WebView2** that renders the HTML. The user sees the rendered page as a visual preview; clicking **Print (System)…** opens the native Windows `PrintDlgEx` dialog.
-
-| | |
-|---|---|
-| **Preview** | **Yes** — the WebView2 pane in the form shows the fully rendered HTML. |
-| **Look** | Preview is Chromium-rendered; the print dialog is native Windows. |
-| **User control** | Printer, copies, page range, orientation, paper size (via the OS dialog). |
-| **Dark theme** | Override applied: `PreferredColorScheme = Light` + `DefaultBackgroundColor = White`. |
-
-**Pros**
-- The **only** built-in way to give users a visual preview *and* the familiar Windows system print dialog.
-- Native OS dialog for printer/settings selection.
-- Chromium-quality HTML rendering in the preview.
-
-**Cons**
-- Requires a dedicated visible window to host the WebView2.
-- The "preview" is the form itself, not a pane inside the print dialog.
-
----
-
-## 3. Browser Dialog (`CoreWebView2PrintDialogKind.Browser`)
+## 2. Browser Dialog (`CoreWebView2PrintDialogKind.Browser`)
 
 Chromium's own print dialog — the same one you see when you press `Ctrl+P` in Edge/Chrome.
 
@@ -71,7 +49,7 @@ Chromium's own print dialog — the same one you see when you press `Ctrl+P` in 
 
 ---
 
-## 4. WinForms GDI Print (`PrintDocument` + `PrintPreviewDialog`)
+## 3. WinForms GDI Print (`PrintDocument` + `PrintPreviewDialog`)
 
 The classic WinForms printing approach using `System.Drawing.Printing`. Entirely independent of WebView2. Renders content via GDI `Graphics` primitives in the `PrintPage` event.
 
@@ -95,30 +73,29 @@ The classic WinForms printing approach using `System.Drawing.Printing`. Entirely
 
 ---
 
-## 5. PDF Print (`CoreWebView2.PrintToPdfAsync`)
+## 4. PDF Print (`CoreWebView2.PrintToPdfAsync`)
 
-Exports the HTML page to a PDF file using Chromium's PDF renderer, then opens the file in the system default PDF application (e.g. Edge, Adobe Reader) where the user can review and print.
+Exports the HTML page to a PDF file using Chromium's PDF renderer, then opens it in `PdfPrintForm` — an in-app WebView2 window that renders the PDF natively. The user can review the document and click **Print…** to open the browser print dialog, all without leaving the application.
 
 | | |
 |---|---|
-| **Preview** | **Yes** — the PDF viewer shows the document before the user chooses to print. |
-| **Look** | PDF viewer's native UI. |
-| **User control** | Full PDF-viewer print options; `CoreWebView2PrintSettings` can control PDF output (paper size, margins, etc.). |
-| **Dark theme** | Override applied on the hidden WebView2 used for rendering. |
+| **Preview** | **Yes** — the PDF is shown in a full-size WebView2 pane within the app. |
+| **Look** | Chromium's built-in PDF viewer inside a WinForms window. |
+| **User control** | Full browser print dialog options; `CoreWebView2PrintSettings` can also control PDF output (paper size, margins, etc.). |
+| **Dark theme** | Not applicable — PDF rendering is not affected by color-scheme overrides. |
 
 **Pros**
 - High-fidelity PDF output — identical to what Chromium would print.
-- The PDF file can be saved, shared, or archived in addition to printing.
-- User gets a full preview inside their familiar PDF viewer.
+- Preview and print entirely within the application — no external viewer needed.
+- Temp file is automatically cleaned up when the viewer form is closed.
 
 **Cons**
-- Requires a PDF viewer to be installed (Edge is always present on Windows 10/11).
-- Two-step workflow: generate PDF → open viewer → print.
-- The PDF is saved to a temp file; cleanup is not automatic.
+- Two-step workflow: generate PDF → open in-app viewer → print.
+- The in-app viewer uses Chromium's browser print dialog (not the native OS dialog).
 
 ---
 
-## 6. MSHTML / WebBrowser Control (Legacy — `WebBrowser.ShowPrintDialog()`)
+## 5. MSHTML / WebBrowser Control (Legacy — `WebBrowser.ShowPrintDialog()`)
 
 The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the same engine that powered Internet Explorer.
 
@@ -146,17 +123,17 @@ The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the 
 
 ## Quick Comparison
 
-| | System | System + Preview | Browser | GDI | PDF | MSHTML |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Print preview | No | **Yes** | **Yes** | **Yes** | **Yes** | No |
-| Native OS print dialog | Yes | **Yes** | No | Yes | Via viewer | No |
-| Works with hidden WebView2 | Yes | N/A | No | N/A | Yes | N/A |
-| Affected by dark mode | No | Yes* | Yes* | No | No | No |
-| Modern HTML/CSS support | Yes | Yes | Yes | No | Yes | No |
-| No user interaction needed | No | No | No | No | No | No |
-| PDF output | No | No | No | No | **Yes** | No |
-| Margin / scale control | Basic | Basic | Full | Manual | Programmatic | Basic |
-| Status | Current | **Recommended** | **Recommended** | Current | Current | Deprecated |
+| | System | Browser | GDI | PDF | MSHTML |
+|---|:---:|:---:|:---:|:---:|:---:|
+| Print preview | No | **Yes** | **Yes** | **Yes** | No |
+| Native OS print dialog | Yes | No | Yes | No | No |
+| Works with hidden WebView2 | Yes | No | N/A | No | N/A |
+| Affected by dark mode | No | Yes* | No | No | No |
+| Modern HTML/CSS support | Yes | Yes | No | Yes | No |
+| No user interaction needed | No | No | No | No | No |
+| PDF output | No | No | No | **Yes** | No |
+| Margin / scale control | Basic | Full | Manual | Programmatic | Basic |
+| Status | Current | **Recommended** | Current | Current | Deprecated |
 
 \* Dark mode override is applied (`PreferredColorScheme = Light`).
 
@@ -166,9 +143,8 @@ The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the 
 
 | Use case | Recommended approach |
 |---|---|
-| User wants a preview before printing with the system dialog | **System + Preview** |
 | User wants the richest preview + most print settings | **Browser** |
 | App must look fully native end-to-end | **GDI Print** (non-HTML) or **System** |
-| Save or share the document as a PDF and optionally print | **PDF Print** |
+| Generate a PDF and print within the app | **PDF Print** |
 | Printing complex HTML/images where layout fidelity matters | **Browser** or **PDF Print** |
 | Legacy IE compatibility | **Do not use** — MSHTML is deprecated |
