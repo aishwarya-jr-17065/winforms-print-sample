@@ -214,13 +214,11 @@ public partial class MainForm : Form
             _webView!.NavigateToString(html);
             await navTask;
 
-            tempPdf = Path.Combine(
-                Path.GetTempPath(),
-                $"WinFormsPrintSample_{Guid.NewGuid():N}.pdf");
+            // Ask WebView2 to produce the PDF as a stream — no file path is given
+            // to the browser; we handle writing the bytes to a temp file ourselves.
+            using var pdfStream = await _webView.CoreWebView2.PrintToPdfStreamAsync(null);
 
-            await _webView.CoreWebView2.PrintToPdfAsync(tempPdf, null);
-
-            if (!File.Exists(tempPdf))
+            if (pdfStream == null || pdfStream.Length == 0)
             {
                 MessageBox.Show(
                     "The PDF could not be generated.",
@@ -228,6 +226,15 @@ public partial class MainForm : Form
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return;
+            }
+
+            tempPdf = Path.Combine(
+                Path.GetTempPath(),
+                $"WinFormsPrintSample_{Guid.NewGuid():N}.pdf");
+
+            using (var fileStream = File.Create(tempPdf))
+            {
+                await pdfStream.CopyToAsync(fileStream);
             }
 
             // Open the PDF inside the app — PdfPrintForm hosts a visible WebView2
