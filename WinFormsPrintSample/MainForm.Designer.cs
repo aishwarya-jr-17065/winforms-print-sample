@@ -22,6 +22,9 @@ partial class MainForm
     private System.Windows.Forms.Button btnDirectPrint;
     private System.Windows.Forms.Button btnEmbeddedPreview;
     private System.Windows.Forms.Button btnPrintPdfFile;
+    private System.Windows.Forms.Panel pnlBottom4;
+    private System.Windows.Forms.Button btnPrintDialog;
+    private System.Windows.Forms.Button btnPageSetup;
 
     /// <summary>
     ///  Clean up any resources being used.
@@ -213,11 +216,43 @@ partial class MainForm
         pnlBottom3.Controls.Add(btnDirectPrint);
         pnlBottom3.Controls.Add(btnPrintPdfFile);
 
+        // ── Fourth row of print buttons ───────────────────────────────────────
+        // PrintDialog button — system printer picker, then print directly
+        btnPrintDialog = new System.Windows.Forms.Button
+        {
+            Text = "Print Dialog",
+            Size = new Size(115, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnPrintDialog.Click += btnPrintDialog_Click;
+
+        // PageSetupDialog button — configure margins/paper/orientation, then preview
+        btnPageSetup = new System.Windows.Forms.Button
+        {
+            Text = "Page Setup",
+            Size = new Size(110, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnPageSetup.Click += btnPageSetup_Click;
+
+        pnlBottom4 = new System.Windows.Forms.Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 52,
+            Padding = new Padding(8),
+        };
+
+        // Add right-to-left: first added = rightmost.
+        pnlBottom4.Controls.Add(btnPrintDialog);
+        pnlBottom4.Controls.Add(btnPageSetup);
+
         // ── Form ─────────────────────────────────────────────────────────────
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
-        ClientSize = new Size(800, 594);
-        MinimumSize = new Size(640, 504);
+        ClientSize = new Size(800, 646);
+        MinimumSize = new Size(640, 556);
         Text = "WinForms HTML Print Sample";
         StartPosition = FormStartPosition.CenterScreen;
 
@@ -225,6 +260,7 @@ partial class MainForm
         Controls.Add(txtHtmlContent);
         // Panels must be added bottom-to-top so WinForms docking places
         // pnlBottom at the very bottom edge and the others stack above it.
+        Controls.Add(pnlBottom4);
         Controls.Add(pnlBottom3);
         Controls.Add(pnlBottom2);
         Controls.Add(pnlBottom);

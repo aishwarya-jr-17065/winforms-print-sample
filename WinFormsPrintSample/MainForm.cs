@@ -589,6 +589,169 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
+    // Print Dialog — shows the standard Windows printer-picker (PrintDialog) so the
+    // user can choose a printer, number of copies, and page range; then drives
+    // PrintDocument.Print() with those settings.  No preview is shown — the output
+    // goes straight to whichever printer the user selected.
+    //
+    // PrintDialog is distinct from the OS "System Print" dialog shown by WebView2:
+    // here the host app owns the PrintDocument and all rendering logic, giving it
+    // full control over fonts, layout, and pagination.
+    //
+    // Demonstrates the PrintDialog usage described in:
+    //   https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-display-print-dialog
+    // ---------------------------------------------------------------------------
+
+    private void btnPrintDialog_Click(object sender, EventArgs e)
+    {
+        string html = txtHtmlContent.Text;
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            MessageBox.Show(
+                "Please enter some HTML content to print.",
+                "Empty Content",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        string plainText = Regex.Replace(html, "<[^>]+>", " ");
+        plainText = Regex.Replace(plainText, @"\s{2,}", " ").Trim();
+
+        // BeginPrint rebuilds the queue before each print job; the empty initial
+        // value satisfies the compiler's definite-assignment rule for the closure.
+        Queue<string> lines = new Queue<string>();
+
+        using var printDoc = new PrintDocument { DocumentName = "PrintDialog GDI Print" };
+
+        // 100 characters per line matches the width used by the other GDI methods.
+        printDoc.BeginPrint += (s, pe) =>
+            lines = new Queue<string>(WrapText(plainText, 100));
+
+        printDoc.PrintPage += (s, pe) =>
+        {
+            using var font = new Font("Courier New", 10f);
+            float lineHeight = font.GetHeight(pe.Graphics!);
+            float y = pe.MarginBounds.Top;
+
+            while (lines.Count > 0 && y + lineHeight <= pe.MarginBounds.Bottom)
+            {
+                pe.Graphics!.DrawString(lines.Dequeue(), font, Brushes.Black, pe.MarginBounds.Left, y);
+                y += lineHeight;
+            }
+
+            pe.HasMorePages = lines.Count > 0;
+        };
+
+        using var printDialog = new PrintDialog
+        {
+            Document        = printDoc,
+            AllowSomePages  = true,
+            AllowCurrentPage = true,
+        };
+
+        if (printDialog.ShowDialog(this) != DialogResult.OK) return;
+
+        try
+        {
+            printDoc.Print();
+            MessageBox.Show(
+                $"Document sent to \"{printDoc.PrinterSettings.PrinterName}\".",
+                "PrintDialog — Sent to Printer",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"An error occurred while printing:\n\n{ex.Message}",
+                "Print Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Page Setup Dialog — shows PageSetupDialog so the user can configure paper
+    // size, orientation, and margins before printing; then opens PrintPreviewDialog
+    // so the user can review the layout with those settings applied.
+    //
+    // PageSetupDialog is one of the three standard WinForms printing dialogs
+    // (alongside PrintDialog and PrintPreviewDialog).  Showing it first lets the
+    // user tune the page layout before committing to a print.
+    //
+    // Demonstrates the PageSetupDialog usage described in:
+    //   https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-create-standard-windows-forms-print-jobs
+    // ---------------------------------------------------------------------------
+
+    private void btnPageSetup_Click(object sender, EventArgs e)
+    {
+        string html = txtHtmlContent.Text;
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            MessageBox.Show(
+                "Please enter some HTML content to print.",
+                "Empty Content",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        string plainText = Regex.Replace(html, "<[^>]+>", " ");
+        plainText = Regex.Replace(plainText, @"\s{2,}", " ").Trim();
+
+        // BeginPrint rebuilds the queue before each print job; the empty initial
+        // value satisfies the compiler's definite-assignment rule for the closure.
+        Queue<string> lines = new Queue<string>();
+
+        using var printDoc = new PrintDocument { DocumentName = "PageSetup GDI Print" };
+
+        // 100 characters per line matches the width used by the other GDI methods.
+        // Re-build the queue at the start of every print job so the preview pass
+        // and the subsequent actual-print pass both receive all pages.
+        printDoc.BeginPrint += (s, pe) =>
+            lines = new Queue<string>(WrapText(plainText, 100));
+
+        printDoc.PrintPage += (s, pe) =>
+        {
+            using var font = new Font("Courier New", 10f);
+            float lineHeight = font.GetHeight(pe.Graphics!);
+            float y = pe.MarginBounds.Top;
+
+            while (lines.Count > 0 && y + lineHeight <= pe.MarginBounds.Bottom)
+            {
+                pe.Graphics!.DrawString(lines.Dequeue(), font, Brushes.Black, pe.MarginBounds.Left, y);
+                y += lineHeight;
+            }
+
+            pe.HasMorePages = lines.Count > 0;
+        };
+
+        // Step 1: PageSetupDialog — user tunes paper size, orientation, margins.
+        using var pageSetupDialog = new PageSetupDialog
+        {
+            Document         = printDoc,
+            AllowMargins     = true,
+            AllowOrientation = true,
+            AllowPaper       = true,
+        };
+
+        if (pageSetupDialog.ShowDialog(this) != DialogResult.OK) return;
+
+        // Step 2: PrintPreviewDialog — user reviews the layout with the chosen
+        // page settings and can click its own Print button to send to a printer.
+        using var previewDialog = new PrintPreviewDialog
+        {
+            Document      = printDoc,
+            StartPosition = FormStartPosition.CenterParent,
+            Width         = 900,
+            Height        = 700,
+            Text          = "Print Preview — custom page settings applied",
+        };
+        previewDialog.ShowDialog(this);
+    }
+
+    // ---------------------------------------------------------------------------
     private bool TryGetHtml(out string html)
     {
         html = string.Empty;
