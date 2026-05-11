@@ -143,58 +143,6 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
-    // Silent print — sends to the default printer without showing any dialog.
-    // ---------------------------------------------------------------------------
-
-    private async void btnSilentPrint_Click(object sender, EventArgs e)
-    {
-        if (!TryGetHtml(out string html)) return;
-
-        btnSilentPrint.Enabled = false;
-        btnSilentPrint.Text = "Printing…";
-
-        try
-        {
-            var navTask = WaitForNavigationAsync(_webView!);
-            _webView!.NavigateToString(html);
-            await navTask;
-
-            // PrintAsync(null) uses default printer settings; no dialog is shown.
-            var status = await _webView.CoreWebView2.PrintAsync(null);
-
-            if (status == CoreWebView2PrintStatus.Succeeded)
-            {
-                MessageBox.Show(
-                    "Document sent to the default printer.",
-                    "Silent Print",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
-            else
-            {
-                MessageBox.Show(
-                    $"Print ended with status: {status}",
-                    "Silent Print",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(
-                $"An error occurred while printing:\n\n{ex.Message}",
-                "Print Error",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Error);
-        }
-        finally
-        {
-            btnSilentPrint.Text = "Silent Print";
-            btnSilentPrint.Enabled = true;
-        }
-    }
-
-    // ---------------------------------------------------------------------------
     // WinForms GDI print — uses PrintDocument + PrintPreviewDialog.
     // Strips HTML tags and renders the plain text via GDI Graphics.
     // This is the classic WinForms printing path, independent of WebView2.

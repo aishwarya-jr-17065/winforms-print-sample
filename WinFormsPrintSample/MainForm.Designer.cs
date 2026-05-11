@@ -16,7 +16,6 @@ partial class MainForm
     private System.Windows.Forms.Panel pnlBottom;
     private System.Windows.Forms.Panel pnlBottom2;
     private System.Windows.Forms.Button btnSystemPreviewPrint;
-    private System.Windows.Forms.Button btnSilentPrint;
     private System.Windows.Forms.Button btnGdiPrint;
     private System.Windows.Forms.Button btnPdfPrint;
 
@@ -145,17 +144,7 @@ partial class MainForm
         };
         btnGdiPrint.Click += btnGdiPrint_Click;
 
-        // Silent Print button
-        btnSilentPrint = new System.Windows.Forms.Button
-        {
-            Text = "Silent Print",
-            Size = new Size(120, 36),
-            Dock = DockStyle.Right,
-            Font = new Font("Segoe UI", 10f),
-        };
-        btnSilentPrint.Click += btnSilentPrint_Click;
-
-        // System + Preview button — leftmost of the four
+        // System + Preview button — leftmost of the three
         btnSystemPreviewPrint = new System.Windows.Forms.Button
         {
             Text = "System + Preview",
@@ -175,7 +164,6 @@ partial class MainForm
         // Add right-to-left: first added = rightmost.
         pnlBottom2.Controls.Add(btnPdfPrint);
         pnlBottom2.Controls.Add(btnGdiPrint);
-        pnlBottom2.Controls.Add(btnSilentPrint);
         pnlBottom2.Controls.Add(btnSystemPreviewPrint);
 
         // ── Form ─────────────────────────────────────────────────────────────
