@@ -2,6 +2,9 @@ using System.Drawing.Printing;
 using System.Text.RegularExpressions;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using Windows.Data.Pdf;
+using Windows.Storage;
+using Windows.Storage.Streams;
 
 namespace WinFormsPrintSample;
 
@@ -466,7 +469,119 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
+    // Print PDF File — lets the user pick any PDF by path, rasterises every
+    // page via the Windows.Data.Pdf WinRT API (built into Windows 10+), then
+    // shows them in PrintPreviewDialog so the user can review and send to any
+    // printer without leaving the application.
+    // ---------------------------------------------------------------------------
 
+    private async void btnPrintPdfFile_Click(object sender, EventArgs e)
+    {
+        using var dlg = new OpenFileDialog
+        {
+            Title  = "Select a PDF file to preview and print",
+            Filter = "PDF Files (*.pdf)|*.pdf|All Files (*.*)|*.*",
+        };
+
+        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+
+        btnPrintPdfFile.Enabled = false;
+        btnPrintPdfFile.Text    = "Loading PDF…";
+
+        var pages = new List<Bitmap>();
+        try
+        {
+            // Load the PDF using the Windows Runtime API.
+            var storageFile = await StorageFile.GetFileFromPathAsync(dlg.FileName);
+            var pdfDoc      = await PdfDocument.LoadFromFileAsync(storageFile);
+
+            if (pdfDoc.IsPasswordProtected)
+            {
+                MessageBox.Show(
+                    "This PDF is password-protected and cannot be opened.",
+                    "PDF Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Render at 150 DPI for crisp preview.
+            // WinRT reports page sizes in DIPs (96 dpi equivalent), so we scale up.
+            const double renderDpi   = 150.0;
+            const double dipsPerInch = 96.0;
+            double       scale       = renderDpi / dipsPerInch;
+
+            for (uint i = 0; i < pdfDoc.PageCount; i++)
+            {
+                using var page = pdfDoc.GetPage(i);
+
+                var renderOptions = new PdfPageRenderOptions
+                {
+                    DestinationWidth  = (uint)(page.Size.Width  * scale),
+                    DestinationHeight = (uint)(page.Size.Height * scale),
+                };
+
+                using var ras = new InMemoryRandomAccessStream();
+                await page.RenderToStreamAsync(ras, renderOptions);
+
+                // PNG is fully decoded by Bitmap's constructor; the stream can be
+                // disposed once construction returns.
+                ras.Seek(0);
+                using var dotNetStream = ras.AsStreamForRead();
+                pages.Add(new Bitmap(dotNetStream));
+            }
+
+            // Index is reset in BeginPrint so both the preview pass and the
+            // subsequent print pass (if the user clicks Print) work correctly.
+            int pageIndex = 0;
+
+            using var printDoc = new PrintDocument
+            {
+                DocumentName = Path.GetFileName(dlg.FileName),
+            };
+
+            printDoc.BeginPrint += (s, pe) => pageIndex = 0;
+            printDoc.PrintPage  += (s, pe) =>
+            {
+                var bmp    = pages[pageIndex++];
+                var bounds = pe.MarginBounds;
+                float fit  = Math.Min(
+                    (float)bounds.Width  / bmp.Width,
+                    (float)bounds.Height / bmp.Height);
+                var dest = new RectangleF(
+                    bounds.Left, bounds.Top,
+                    bmp.Width * fit, bmp.Height * fit);
+                pe.Graphics!.DrawImage(bmp, dest);
+                pe.HasMorePages = pageIndex < pages.Count;
+            };
+
+            using var previewDialog = new PrintPreviewDialog
+            {
+                Document      = printDoc,
+                StartPosition = FormStartPosition.CenterParent,
+                Width         = 900,
+                Height        = 700,
+                Text          = $"PDF Print Preview — {Path.GetFileName(dlg.FileName)}",
+            };
+            previewDialog.ShowDialog(this);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Could not load or render the PDF:\n\n{ex.Message}",
+                "PDF Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+        finally
+        {
+            foreach (var bmp in pages) bmp.Dispose();
+            btnPrintPdfFile.Text    = "Print PDF File";
+            btnPrintPdfFile.Enabled = true;
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     private bool TryGetHtml(out string html)
     {
         html = string.Empty;

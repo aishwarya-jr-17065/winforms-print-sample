@@ -21,6 +21,7 @@ partial class MainForm
     private System.Windows.Forms.Panel pnlBottom3;
     private System.Windows.Forms.Button btnDirectPrint;
     private System.Windows.Forms.Button btnEmbeddedPreview;
+    private System.Windows.Forms.Button btnPrintPdfFile;
 
     /// <summary>
     ///  Clean up any resources being used.
@@ -190,6 +191,16 @@ partial class MainForm
         };
         btnDirectPrint.Click += btnDirectPrint_Click;
 
+        // Print PDF File button — picks a PDF by path and shows it in PrintPreviewDialog
+        btnPrintPdfFile = new System.Windows.Forms.Button
+        {
+            Text = "Print PDF File",
+            Size = new Size(125, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnPrintPdfFile.Click += btnPrintPdfFile_Click;
+
         pnlBottom3 = new System.Windows.Forms.Panel
         {
             Dock = DockStyle.Bottom,
@@ -200,6 +211,7 @@ partial class MainForm
         // Add right-to-left: first added = rightmost.
         pnlBottom3.Controls.Add(btnEmbeddedPreview);
         pnlBottom3.Controls.Add(btnDirectPrint);
+        pnlBottom3.Controls.Add(btnPrintPdfFile);
 
         // ── Form ─────────────────────────────────────────────────────────────
         AutoScaleDimensions = new SizeF(7F, 15F);
