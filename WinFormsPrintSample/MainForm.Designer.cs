@@ -14,6 +14,11 @@ partial class MainForm
     private System.Windows.Forms.Button btnBrowserPrint;
     private System.Windows.Forms.Button btnMshtmlPrint;
     private System.Windows.Forms.Panel pnlBottom;
+    private System.Windows.Forms.Panel pnlBottom2;
+    private System.Windows.Forms.Button btnSystemPreviewPrint;
+    private System.Windows.Forms.Button btnSilentPrint;
+    private System.Windows.Forms.Button btnGdiPrint;
+    private System.Windows.Forms.Button btnPdfPrint;
 
     /// <summary>
     ///  Clean up any resources being used.
@@ -119,16 +124,73 @@ partial class MainForm
         pnlBottom.Controls.Add(btnBrowserPrint);
         pnlBottom.Controls.Add(btnMshtmlPrint);
 
+        // ── Second row of print buttons ───────────────────────────────────────
+        // PDF Print button — rightmost
+        btnPdfPrint = new System.Windows.Forms.Button
+        {
+            Text = "PDF Print",
+            Size = new Size(110, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnPdfPrint.Click += btnPdfPrint_Click;
+
+        // GDI Print button
+        btnGdiPrint = new System.Windows.Forms.Button
+        {
+            Text = "GDI Print",
+            Size = new Size(110, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnGdiPrint.Click += btnGdiPrint_Click;
+
+        // Silent Print button
+        btnSilentPrint = new System.Windows.Forms.Button
+        {
+            Text = "Silent Print",
+            Size = new Size(120, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnSilentPrint.Click += btnSilentPrint_Click;
+
+        // System + Preview button — leftmost of the four
+        btnSystemPreviewPrint = new System.Windows.Forms.Button
+        {
+            Text = "System + Preview",
+            Size = new Size(150, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnSystemPreviewPrint.Click += btnSystemPreviewPrint_Click;
+
+        pnlBottom2 = new System.Windows.Forms.Panel
+        {
+            Dock = DockStyle.Bottom,
+            Height = 52,
+            Padding = new Padding(8),
+        };
+
+        // Add right-to-left: first added = rightmost.
+        pnlBottom2.Controls.Add(btnPdfPrint);
+        pnlBottom2.Controls.Add(btnGdiPrint);
+        pnlBottom2.Controls.Add(btnSilentPrint);
+        pnlBottom2.Controls.Add(btnSystemPreviewPrint);
+
         // ── Form ─────────────────────────────────────────────────────────────
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
-        ClientSize = new Size(800, 490);
-        MinimumSize = new Size(640, 400);
+        ClientSize = new Size(800, 542);
+        MinimumSize = new Size(640, 452);
         Text = "WinForms HTML Print Sample";
         StartPosition = FormStartPosition.CenterScreen;
 
         Controls.Add(lblHtmlContent);
         Controls.Add(txtHtmlContent);
+        // pnlBottom2 must be added before pnlBottom so that WinForms docking
+        // places pnlBottom at the very bottom edge and pnlBottom2 above it.
+        Controls.Add(pnlBottom2);
         Controls.Add(pnlBottom);
     }
 
