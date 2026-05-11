@@ -17,6 +17,7 @@ partial class MainForm
     private System.Windows.Forms.Panel pnlBottom2;
     private System.Windows.Forms.Button btnGdiPrint;
     private System.Windows.Forms.Button btnPdfPrint;
+    private System.Windows.Forms.Button btnScreenPrint;
 
     /// <summary>
     ///  Clean up any resources being used.
@@ -143,6 +144,16 @@ partial class MainForm
         };
         btnGdiPrint.Click += btnGdiPrint_Click;
 
+        // Screen Print button — captures the form via CopyFromScreen (MS docs approach)
+        btnScreenPrint = new System.Windows.Forms.Button
+        {
+            Text = "Screen Print",
+            Size = new Size(120, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 10f),
+        };
+        btnScreenPrint.Click += btnScreenPrint_Click;
+
         pnlBottom2 = new System.Windows.Forms.Panel
         {
             Dock = DockStyle.Bottom,
@@ -153,6 +164,7 @@ partial class MainForm
         // Add right-to-left: first added = rightmost.
         pnlBottom2.Controls.Add(btnPdfPrint);
         pnlBottom2.Controls.Add(btnGdiPrint);
+        pnlBottom2.Controls.Add(btnScreenPrint);
 
         // ── Form ─────────────────────────────────────────────────────────────
         AutoScaleDimensions = new SizeF(7F, 15F);

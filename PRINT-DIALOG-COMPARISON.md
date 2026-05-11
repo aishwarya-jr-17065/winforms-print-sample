@@ -1,6 +1,6 @@
 # WinForms Print Options — Full Comparison
 
-This document covers all five print approaches demonstrated in the sample.
+This document covers all six print approaches demonstrated in the sample.
 
 ---
 
@@ -95,7 +95,33 @@ Exports the HTML page to a PDF file using Chromium's PDF renderer, then opens it
 
 ---
 
-## 5. MSHTML / WebBrowser Control (Legacy — `WebBrowser.ShowPrintDialog()`)
+## 5. Screen Print (`Graphics.CopyFromScreen` + `PrintDocument`)
+
+Captures the entire running form as a bitmap using `Graphics.CopyFromScreen`, then prints it via the standard WinForms `PrintDocument` + `PrintPreviewDialog`. This is the approach described directly in the [Microsoft WinForms printing documentation](https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-windows-form). Entirely independent of WebView2.
+
+| | |
+|---|---|
+| **Preview** | **Yes** — WinForms built-in `PrintPreviewDialog` control, showing the captured screenshot. |
+| **Look** | Native Windows controls throughout (preview dialog + system print dialog). |
+| **User control** | Printer, copies, page range, orientation, paper size (via the print button inside `PrintPreviewDialog`). |
+| **What is printed** | A pixel-exact screenshot of the form at the moment the button is clicked — includes all visible UI elements (HTML editor, buttons, labels). Not suitable for printing only the HTML content. |
+
+**Pros**
+- No dependency on WebView2.
+- Works everywhere .NET WinForms runs.
+- Native look and feel end-to-end.
+- Simplest way to get a "what you see is what you get" printout of any form.
+- Built-in `PrintPreviewDialog` + system print dialog with zero extra dependencies.
+- The bitmap is automatically scaled to fit the printable area.
+
+**Cons**
+- Prints the entire form UI — not just the HTML content — so buttons and editor chrome appear on the printout.
+- Screenshot quality depends on screen DPI; high-DPI displays may produce a larger, higher-quality bitmap.
+- Not suitable when you want to print only the rendered HTML without UI chrome.
+
+---
+
+## 6. MSHTML / WebBrowser Control (Legacy — `WebBrowser.ShowPrintDialog()`)
 
 The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the same engine that powered Internet Explorer.
 
@@ -123,17 +149,17 @@ The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the 
 
 ## Quick Comparison
 
-| | System | Browser | GDI | PDF | MSHTML |
-|---|:---:|:---:|:---:|:---:|:---:|
-| Print preview | No | **Yes** | **Yes** | **Yes** | No |
-| Native OS print dialog | Yes | No | Yes | No | No |
-| Works with hidden WebView2 | Yes | No | N/A | No | N/A |
-| Affected by dark mode | No | Yes* | No | No | No |
-| Modern HTML/CSS support | Yes | Yes | No | Yes | No |
-| No user interaction needed | No | No | No | No | No |
-| PDF output | No | No | No | **Yes** | No |
-| Margin / scale control | Basic | Full | Manual | Programmatic | Basic |
-| Status | Current | **Recommended** | Current | Current | Deprecated |
+| | System | Browser | GDI | PDF | Screen | MSHTML |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Print preview | No | **Yes** | **Yes** | **Yes** | **Yes** | No |
+| Native OS print dialog | Yes | No | Yes | No | Yes | No |
+| Works with hidden WebView2 | Yes | No | N/A | No | N/A | N/A |
+| Affected by dark mode | No | Yes* | No | No | No | No |
+| Modern HTML/CSS support | Yes | Yes | No | Yes | No | No |
+| No user interaction needed | No | No | No | No | No | No |
+| PDF output | No | No | No | **Yes** | No | No |
+| Margin / scale control | Basic | Full | Manual | Programmatic | Auto-scale | Basic |
+| Status | Current | **Recommended** | Current | Current | Current | Deprecated |
 
 \* Dark mode override is applied (`PreferredColorScheme = Light`).
 
@@ -147,4 +173,5 @@ The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the 
 | App must look fully native end-to-end | **GDI Print** (non-HTML) or **System** |
 | Generate a PDF and print within the app | **PDF Print** |
 | Printing complex HTML/images where layout fidelity matters | **Browser** or **PDF Print** |
+| Quick "print what I see on screen" / form screenshot | **Screen Print** |
 | Legacy IE compatibility | **Do not use** — MSHTML is deprecated |

@@ -257,7 +257,68 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
-    // Shared validation helper
+    // Screen Print — captures the form as a bitmap using Graphics.CopyFromScreen
+    // (the approach described in the Microsoft WinForms printing docs), then shows
+    // PrintPreviewDialog so the user can review and print via the system dialog.
+    // ---------------------------------------------------------------------------
+
+    private void btnScreenPrint_Click(object sender, EventArgs e)
+    {
+        // CopyFromScreen captures whatever is at the form's screen coordinates.
+        // If the form is minimized it will capture something unrelated, so restore it first.
+        if (this.WindowState == FormWindowState.Minimized)
+            this.WindowState = FormWindowState.Normal;
+
+        // Capture the entire form as a bitmap, exactly as described in:
+        // https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-windows-form
+        var formSize = this.Size;
+        var screenshot = new Bitmap(formSize.Width, formSize.Height);
+        using (var memG = Graphics.FromImage(screenshot))
+        {
+            memG.CopyFromScreen(this.Location.X, this.Location.Y, 0, 0, formSize);
+        }
+
+        using var printDoc = new PrintDocument { DocumentName = "WinForms Screen Print" };
+        printDoc.PrintPage += (s, pe) =>
+        {
+            // Scale the captured bitmap to fit within the printable margin bounds.
+            var bounds = pe.MarginBounds;
+            float scaleX = (float)bounds.Width  / screenshot.Width;
+            float scaleY = (float)bounds.Height / screenshot.Height;
+            float scale  = Math.Min(scaleX, scaleY);
+            var destRect = new RectangleF(
+                bounds.Left,
+                bounds.Top,
+                screenshot.Width  * scale,
+                screenshot.Height * scale);
+            pe.Graphics!.DrawImage(screenshot, destRect);
+            pe.HasMorePages = false;
+        };
+
+        using var previewDialog = new PrintPreviewDialog
+        {
+            Document = printDoc,
+            StartPosition = FormStartPosition.CenterParent,
+            Width  = 900,
+            Height = 700,
+            Text   = "Screen Print Preview — form captured via CopyFromScreen",
+        };
+
+        // ShowDialog is synchronous — ShowDialog returns only after the dialog
+        // (and any printing triggered from within it) has fully completed.
+        // Disposing the bitmap in a finally block therefore covers both the
+        // preview-only and print-then-close cases without risk of early disposal.
+        try
+        {
+            previewDialog.ShowDialog(this);
+        }
+        finally
+        {
+            screenshot.Dispose();
+        }
+    }
+
+    // ---------------------------------------------------------------------------
     // ---------------------------------------------------------------------------
 
     private bool TryGetHtml(out string html)

@@ -1,6 +1,6 @@
 # WinForms HTML Print Sample
 
-A .NET 8 Windows Forms application that prints HTML content using the **Microsoft Edge WebView2** (Chromium) runtime. It demonstrates **five** different print approaches side-by-side and documents their trade-offs.
+A .NET 8 Windows Forms application that prints HTML content using the **Microsoft Edge WebView2** (Chromium) runtime. It demonstrates **six** different print approaches side-by-side and documents their trade-offs.
 
 ## Requirements
 
@@ -34,7 +34,7 @@ WinFormsPrintSample\bin\Release\net8.0-windows10.0.19041.0\WinFormsPrintSample.e
 
 1. The main window contains a **multiline text box** pre-filled with a sample HTML document.
 2. Paste or type any HTML you want to print into the text box.
-3. Click one of the five print buttons:
+3. Click one of the six print buttons:
 
 ### Row 1 — Additional print options
 
@@ -42,6 +42,7 @@ WinFormsPrintSample\bin\Release\net8.0-windows10.0.19041.0\WinFormsPrintSample.e
 |---|---|
 | **GDI Print** | Uses the classic WinForms `PrintDocument` + `PrintPreviewDialog` (GDI / `System.Drawing`) — entirely independent of WebView2. Shows the HTML source rendered as plain text in the built-in WinForms print-preview window. |
 | **PDF Print** | Calls `CoreWebView2.PrintToPdfAsync()` to export the HTML as a full-fidelity PDF, then displays it in an in-app WebView2 PDF viewer where the user can review and print without leaving the application. |
+| **Screen Print** | Captures the entire main form as a bitmap using `Graphics.CopyFromScreen` (the approach described in the [Microsoft WinForms printing docs](https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-windows-form)), then shows it in `PrintPreviewDialog`. Prints an exact screenshot of whatever is currently displayed on screen. |
 
 ### Row 2 — Original three options
 
@@ -55,14 +56,14 @@ WinFormsPrintSample\bin\Release\net8.0-windows10.0.19041.0\WinFormsPrintSample.e
 
 ## Print Method Comparison (Summary)
 
-| | System Dialog | Browser Dialog | GDI Print | PDF Print | MSHTML Dialog |
-|---|:---:|:---:|:---:|:---:|:---:|
-| Print preview | No | **Yes** (Chromium dialog) | **Yes** (WinForms GDI) | **Yes** (in-app WebView2) | No |
-| Native OS print dialog | Yes | No | Yes (via `PrintDialog`) | No | No |
-| Modern HTML/CSS | Yes | Yes | No (plain text) | **Yes** | No |
-| No dialog / silent | No | No | No | No | No |
-| PDF output | No | No | No | **Yes** | No |
-| Status | Current | **Current / Recommended** | Current | Current | Deprecated |
+| | System Dialog | Browser Dialog | GDI Print | PDF Print | Screen Print | MSHTML Dialog |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| Print preview | No | **Yes** (Chromium dialog) | **Yes** (WinForms GDI) | **Yes** (in-app WebView2) | **Yes** (WinForms GDI) | No |
+| Native OS print dialog | Yes | No | Yes (via `PrintDialog`) | No | Yes (via `PrintDialog`) | No |
+| Modern HTML/CSS | Yes | Yes | No (plain text) | **Yes** | No (screenshot) | No |
+| No dialog / silent | No | No | No | No | No | No |
+| PDF output | No | No | No | **Yes** | No | No |
+| Status | Current | **Current / Recommended** | Current | Current | Current | Deprecated |
 
 ## Project Structure
 
@@ -86,5 +87,5 @@ PRINT-DIALOG-COMPARISON.md      # Detailed comparison of all five print approach
 - **Browser printing**: `CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.Browser)` — Chromium's own dialog with live preview. Requires the WebView2 control to be **visible and properly sized**; a hidden/1×1 control produces *"This app doesn't support print preview"*.
 - **GDI printing**: `PrintDocument` + `PrintPreviewDialog` — the classic WinForms approach using `System.Drawing`. Independent of WebView2; renders the HTML source as plain wrapped text via `Graphics.DrawString`. Demonstrates the built-in WinForms preview control.
 - **PDF printing**: `CoreWebView2.PrintToPdfAsync(filePath, null)` — saves a high-fidelity PDF to a temp file, then opens it in `PdfPrintForm` — a visible WebView2 window that renders the PDF natively. The user clicks **Print…** to open the browser print dialog from within the app. The temp file is deleted when the viewer form is closed.
-- **Dark mode**: `Profile.PreferredColorScheme = Light` + `DefaultBackgroundColor = White` are set on any visible WebView2 to prevent Chromium from auto-darkening page content when the system is in dark mode.
+- **Screen printing**: `Graphics.CopyFromScreen` captures the entire form as a `Bitmap`, which is then passed to `PrintDocument.PrintPage` and displayed in `PrintPreviewDialog`. The bitmap is scaled to fit the printable margin bounds and disposed when the preview dialog closes. This directly implements the approach described in the [Microsoft WinForms printing docs](https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-windows-form).
 - **Shared environment**: All WebView2 instances share the same `CoreWebView2Environment` so they run in the same Chromium process group.
