@@ -1,6 +1,6 @@
 # WinForms Print Options — Full Comparison
 
-This document covers all six print approaches demonstrated in the sample.
+This document covers all eight print approaches demonstrated in the sample.
 
 ---
 
@@ -121,7 +121,65 @@ Captures the entire running form as a bitmap using `Graphics.CopyFromScreen`, th
 
 ---
 
-## 6. MSHTML / WebBrowser Control (Legacy — `WebBrowser.ShowPrintDialog()`)
+## 6. Direct / Silent Print (`PrintDocument.Print()` with no UI)
+
+Strips HTML to plain text, creates a `PrintDocument`, and calls `Print()` directly — no preview dialog, no print dialog. The document is sent immediately to the default system printer. Uses a `StringReader` + line-by-line `DrawString` pagination, directly mirroring the MS docs "[How to print a text document](https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-text-document)" `StreamReader` example.
+
+| | |
+|---|---|
+| **Preview** | None — output goes straight to the default printer. |
+| **Look** | No UI shown during printing; a brief confirmation message appears after. |
+| **User control** | None — printer is selected from the OS default. |
+| **HTML rendering** | **No** — HTML tags are stripped; plain text is rendered line-by-line. |
+
+**Pros**
+- Zero UI to dismiss — ideal for automated or batch printing.
+- No dependency on WebView2.
+- Works everywhere .NET WinForms runs.
+- Faithful recreation of the MS docs `StreamReader` text-document example.
+
+**Cons**
+- No way for the user to select a different printer or adjust settings without code changes.
+- Cannot render HTML/CSS.
+- If the default printer is not configured, printing will silently fail or throw.
+
+---
+
+## 7. Embedded Preview (`PrintPreviewControl` in a custom form)
+
+Hosts `PrintPreviewControl` — a bare WinForms control — inside a custom `PrintPreviewControlForm`. Unlike `PrintPreviewDialog` (which is a self-contained popup that you simply call `ShowDialog()` on), `PrintPreviewControl` is just a control that you embed wherever you like and surround with your own UI. This form adds ± zoom buttons, a zoom percentage label, and a "Print…" button backed by `PrintDialog`.
+
+Implements the MS docs "[How to print in Windows Forms using Print Preview](https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-in-windows-forms-using-print-preview)" `PrintPreviewControl` example.
+
+| | |
+|---|---|
+| **Preview** | **Yes** — `PrintPreviewControl` renders the document in-place with anti-aliasing. |
+| **Look** | Fully custom — the surrounding toolbar and buttons are defined by your code. |
+| **User control** | Printer, copies, page range (via `PrintDialog`). Zoom controlled with ± buttons. |
+| **HTML rendering** | **No** — HTML tags are stripped; plain text is rendered line-by-line. |
+
+**Pros**
+- Complete UI freedom — embed the preview panel anywhere in your application layout.
+- Can configure `Zoom`, `Columns`, `Rows`, and `UseAntiAlias` programmatically.
+- No dependency on WebView2.
+- Works everywhere .NET WinForms runs.
+- Native look and feel for all controls.
+
+**Cons**
+- You must build the surrounding toolbar yourself (`PrintPreviewDialog` gives you this for free).
+- Cannot render HTML/CSS.
+
+**Key difference from GDI Print (approach #3):**
+
+| | GDI Print | Embedded Preview |
+|---|---|---|
+| Preview container | `PrintPreviewDialog` (complete dialog) | `PrintPreviewControl` (raw control, custom form) |
+| Toolbar | Built-in | You build it |
+| Embedding | Popup dialog only | Anywhere in your form |
+
+---
+
+## 8. MSHTML / WebBrowser Control (Legacy — `WebBrowser.ShowPrintDialog()`)
 
 The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the same engine that powered Internet Explorer.
 
@@ -149,17 +207,17 @@ The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the 
 
 ## Quick Comparison
 
-| | System | Browser | GDI | PDF | Screen | MSHTML |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| Print preview | No | **Yes** | **Yes** | **Yes** | **Yes** | No |
-| Native OS print dialog | Yes | No | Yes | No | Yes | No |
-| Works with hidden WebView2 | Yes | No | N/A | No | N/A | N/A |
-| Affected by dark mode | No | Yes* | No | No | No | No |
-| Modern HTML/CSS support | Yes | Yes | No | Yes | No | No |
-| No user interaction needed | No | No | No | No | No | No |
-| PDF output | No | No | No | **Yes** | No | No |
-| Margin / scale control | Basic | Full | Manual | Programmatic | Auto-scale | Basic |
-| Status | Current | **Recommended** | Current | Current | Current | Deprecated |
+| | System | Browser | GDI | PDF | Screen | Direct | Embedded Preview | MSHTML |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| Print preview | No | **Yes** | **Yes** | **Yes** | **Yes** | No | **Yes** | No |
+| Native OS print dialog | Yes | No | Yes | No | Yes | No | Yes | No |
+| Works with hidden WebView2 | Yes | No | N/A | No | N/A | N/A | N/A | N/A |
+| Affected by dark mode | No | Yes* | No | No | No | No | No | No |
+| Modern HTML/CSS support | Yes | Yes | No | Yes | No | No | No | No |
+| No user interaction needed | No | No | No | No | No | **Yes** | No | No |
+| PDF output | No | No | No | **Yes** | No | No | No | No |
+| Margin / scale control | Basic | Full | Manual | Programmatic | Auto-scale | None | Manual | Basic |
+| Status | Current | **Recommended** | Current | Current | Current | Current | Current | Deprecated |
 
 \* Dark mode override is applied (`PreferredColorScheme = Light`).
 
@@ -174,4 +232,6 @@ The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the 
 | Generate a PDF and print within the app | **PDF Print** |
 | Printing complex HTML/images where layout fidelity matters | **Browser** or **PDF Print** |
 | Quick "print what I see on screen" / form screenshot | **Screen Print** |
+| Batch / silent / automated printing (no user interaction) | **Direct Print** |
+| Custom print preview UI embedded inside your form | **Embedded Preview** (`PrintPreviewControl`) |
 | Legacy IE compatibility | **Do not use** — MSHTML is deprecated |

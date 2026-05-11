@@ -319,6 +319,152 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
+    // Direct / Silent GDI print — the exact approach from the MS docs article
+    // "How to print a Windows Form": strip HTML to plain text, build a
+    // PrintDocument, and call Print() directly — no preview, no dialog.
+    // The OS sends output to the system default printer immediately.
+    //
+    // This demonstrates calling PrintDocument.Print() without any UI, which is
+    // the pattern used in both:
+    //   • https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-windows-form
+    //   • https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-text-document
+    // ---------------------------------------------------------------------------
+
+    private void btnDirectPrint_Click(object sender, EventArgs e)
+    {
+        string html = txtHtmlContent.Text;
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            MessageBox.Show(
+                "Please enter some HTML content to print.",
+                "Empty Content",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        // Strip HTML tags, exactly as GDI Print does, to get printable plain text.
+        string plainText = Regex.Replace(html, "<[^>]+>", " ");
+        plainText = Regex.Replace(plainText, @"\s{2,}", " ").Trim();
+
+        // Use a StringReader so we can drive pagination the same way the MS docs
+        // StreamReader example does — reading one line at a time in PrintPage.
+        using var reader = new System.IO.StringReader(plainText);
+        using var printFont = new Font("Arial", 10f);
+        using var printDoc = new PrintDocument { DocumentName = "Direct GDI Print" };
+
+        printDoc.PrintPage += (s, pe) =>
+        {
+            float linesPerPage = pe.MarginBounds.Height / printFont.GetHeight(pe.Graphics!);
+            float yPos = pe.MarginBounds.Top;
+            int count = 0;
+            string? line;
+
+            while (count < linesPerPage && (line = reader.ReadLine()) != null)
+            {
+                pe.Graphics!.DrawString(
+                    line,
+                    printFont,
+                    Brushes.Black,
+                    pe.MarginBounds.Left,
+                    yPos,
+                    new StringFormat());
+                yPos += printFont.GetHeight(pe.Graphics);
+                count++;
+            }
+
+            // Peek to see if there is more content; if so request another page.
+            pe.HasMorePages = reader.Peek() != -1;
+        };
+
+        try
+        {
+            // Print() goes straight to the default printer — no dialog, no preview.
+            printDoc.Print();
+            MessageBox.Show(
+                "Document sent to the default printer.",
+                "Direct Print",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"An error occurred while printing:\n\n{ex.Message}",
+                "Print Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Embedded Preview — uses PrintPreviewControl (not PrintPreviewDialog).
+    // PrintPreviewControl is a bare WinForms control that can be embedded inside
+    // any form, letting you build a fully custom preview UI around it.
+    //
+    // This demonstrates the PrintPreviewControl approach from:
+    //   https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-in-windows-forms-using-print-preview
+    // ---------------------------------------------------------------------------
+
+    private void btnEmbeddedPreview_Click(object sender, EventArgs e)
+    {
+        string html = txtHtmlContent.Text;
+        if (string.IsNullOrWhiteSpace(html))
+        {
+            MessageBox.Show(
+                "Please enter some HTML content to print.",
+                "Empty Content",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        string plainText = Regex.Replace(html, "<[^>]+>", " ");
+        plainText = Regex.Replace(plainText, @"\s{2,}", " ").Trim();
+
+        var reader = new System.IO.StringReader(plainText);
+        var printFont = new Font("Arial", 10f);
+        var printDoc = new PrintDocument { DocumentName = "Embedded Preview — GDI" };
+
+        printDoc.PrintPage += (s, pe) =>
+        {
+            float linesPerPage = pe.MarginBounds.Height / printFont.GetHeight(pe.Graphics!);
+            float yPos = pe.MarginBounds.Top;
+            int count = 0;
+            string? line;
+
+            while (count < linesPerPage && (line = reader.ReadLine()) != null)
+            {
+                pe.Graphics!.DrawString(
+                    line,
+                    printFont,
+                    Brushes.Black,
+                    pe.MarginBounds.Left,
+                    yPos,
+                    new StringFormat());
+                yPos += printFont.GetHeight(pe.Graphics);
+                count++;
+            }
+
+            pe.HasMorePages = reader.Peek() != -1;
+        };
+
+        // Dispose reader and font when the preview form is closed — this fires
+        // regardless of whether the user printed or just closed the window.
+        // PrintPreviewControlForm owns and disposes printDoc (in its Dispose override).
+        var previewForm = new PrintPreviewControlForm(printDoc);
+        previewForm.FormClosed += (s, args) => { reader.Dispose(); printFont.Dispose(); };
+
+        try
+        {
+            previewForm.ShowDialog(this);
+        }
+        finally
+        {
+            previewForm.Dispose();
+        }
+    }
+
     // ---------------------------------------------------------------------------
 
     private bool TryGetHtml(out string html)
