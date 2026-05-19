@@ -133,54 +133,58 @@ public partial class MainForm : Form
 
     // ---------------------------------------------------------------------------
     // WinForms GDI print — uses PrintDocument + PrintPreviewDialog.
-    // Strips HTML tags and renders the plain text via GDI Graphics.
-    // This is the classic WinForms printing path, independent of WebView2.
+    // Rasterises the HTML via the WebView→PDF→raster pipeline so the output
+    // is pixel-perfect (full CSS/image fidelity) rather than stripped plain text.
     // ---------------------------------------------------------------------------
 
-    private void btnGdiPrint_Click(object sender, EventArgs e)
+    private async void btnGdiPrint_Click(object sender, EventArgs e)
     {
-        string html = txtHtmlContent.Text;
-        if (string.IsNullOrWhiteSpace(html))
+        if (!TryGetHtml(out string html)) return;
+
+        btnGdiPrint.Enabled = false;
+        btnGdiPrint.Text    = "Generating PDF…";
+
+        var pages = new List<Bitmap>();
+        try
+        {
+            pages = await RasterizeToPagesAsync(html);
+
+            int pageIndex = 0;
+            using var printDoc = new PrintDocument { DocumentName = "WinForms GDI Print" };
+            printDoc.BeginPrint += (s, pe) => pageIndex = 0;
+            printDoc.PrintPage  += (s, pe) =>
+            {
+                var bmp    = pages[pageIndex++];
+                var bounds = pe.MarginBounds;
+                float fit  = Math.Min((float)bounds.Width / bmp.Width, (float)bounds.Height / bmp.Height);
+                pe.Graphics!.DrawImage(bmp, new RectangleF(bounds.Left, bounds.Top, bmp.Width * fit, bmp.Height * fit));
+                pe.HasMorePages = pageIndex < pages.Count;
+            };
+
+            using var previewDialog = new PrintPreviewDialog
+            {
+                Document      = printDoc,
+                StartPosition = FormStartPosition.CenterParent,
+                Width         = 900,
+                Height        = 700,
+                Text          = "GDI Print Preview — WebView → PDF → raster → GDI",
+            };
+            previewDialog.ShowDialog(this);
+        }
+        catch (Exception ex)
         {
             MessageBox.Show(
-                "Please enter some HTML content to print.",
-                "Empty Content",
+                $"An error occurred:\n\n{ex.Message}",
+                "GDI Print Error",
                 MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-            return;
+                MessageBoxIcon.Error);
         }
-
-        // Strip HTML tags so the GDI renderer sees plain readable text.
-        string plainText = Regex.Replace(html, "<[^>]+>", " ");
-        plainText = Regex.Replace(plainText, @"\s{2,}", " ").Trim();
-
-        var lines = new Queue<string>(WrapText(plainText, 100));
-
-        var printDoc = new PrintDocument { DocumentName = "WinForms GDI Print" };
-        printDoc.PrintPage += (s, pe) =>
+        finally
         {
-            using var font = new Font("Courier New", 10f);
-            float lineHeight = font.GetHeight(pe.Graphics!);
-            float y = pe.MarginBounds.Top;
-
-            while (lines.Count > 0 && y + lineHeight <= pe.MarginBounds.Bottom)
-            {
-                pe.Graphics!.DrawString(lines.Dequeue(), font, Brushes.Black, pe.MarginBounds.Left, y);
-                y += lineHeight;
-            }
-
-            pe.HasMorePages = lines.Count > 0;
-        };
-
-        using var previewDialog = new PrintPreviewDialog
-        {
-            Document = printDoc,
-            StartPosition = FormStartPosition.CenterParent,
-            Width = 900,
-            Height = 700,
-            Text = "GDI Print Preview — HTML rendered as plain text",
-        };
-        previewDialog.ShowDialog(this);
+            foreach (var bmp in pages) bmp.Dispose();
+            btnGdiPrint.Text    = "GDI Print";
+            btnGdiPrint.Enabled = true;
+        }
     }
 
     private static IEnumerable<string> WrapText(string text, int maxChars)
@@ -329,9 +333,8 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
-    // Direct / Silent GDI print — the exact approach from the MS docs article
-    // "How to print a Windows Form": strip HTML to plain text, build a
-    // PrintDocument, and call Print() directly — no preview, no dialog.
+    // Direct / Silent GDI print — rasterises HTML via WebView→PDF→raster and
+    // calls PrintDocument.Print() directly — no preview, no dialog.
     // The OS sends output to the system default printer immediately.
     //
     // This demonstrates calling PrintDocument.Print() without any UI, which is
@@ -340,55 +343,30 @@ public partial class MainForm : Form
     //   • https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-text-document
     // ---------------------------------------------------------------------------
 
-    private void btnDirectPrint_Click(object sender, EventArgs e)
+    private async void btnDirectPrint_Click(object sender, EventArgs e)
     {
-        string html = txtHtmlContent.Text;
-        if (string.IsNullOrWhiteSpace(html))
-        {
-            MessageBox.Show(
-                "Please enter some HTML content to print.",
-                "Empty Content",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-            return;
-        }
+        if (!TryGetHtml(out string html)) return;
 
-        // Strip HTML tags, exactly as GDI Print does, to get printable plain text.
-        string plainText = Regex.Replace(html, "<[^>]+>", " ");
-        plainText = Regex.Replace(plainText, @"\s{2,}", " ").Trim();
+        btnDirectPrint.Enabled = false;
+        btnDirectPrint.Text    = "Generating PDF…";
 
-        // Use a StringReader so we can drive pagination the same way the MS docs
-        // StreamReader example does — reading one line at a time in PrintPage.
-        using var reader = new System.IO.StringReader(plainText);
-        using var printFont = new Font("Arial", 10f);
-        using var printDoc = new PrintDocument { DocumentName = "Direct GDI Print" };
-
-        printDoc.PrintPage += (s, pe) =>
-        {
-            float linesPerPage = pe.MarginBounds.Height / printFont.GetHeight(pe.Graphics!);
-            float yPos = pe.MarginBounds.Top;
-            int count = 0;
-            string? line;
-
-            while (count < linesPerPage && (line = reader.ReadLine()) != null)
-            {
-                pe.Graphics!.DrawString(
-                    line,
-                    printFont,
-                    Brushes.Black,
-                    pe.MarginBounds.Left,
-                    yPos,
-                    new StringFormat());
-                yPos += printFont.GetHeight(pe.Graphics);
-                count++;
-            }
-
-            // Peek to see if there is more content; if so request another page.
-            pe.HasMorePages = reader.Peek() != -1;
-        };
-
+        var pages = new List<Bitmap>();
         try
         {
+            pages = await RasterizeToPagesAsync(html);
+
+            int pageIndex = 0;
+            using var printDoc = new PrintDocument { DocumentName = "Direct GDI Print" };
+            printDoc.BeginPrint += (s, pe) => pageIndex = 0;
+            printDoc.PrintPage  += (s, pe) =>
+            {
+                var bmp    = pages[pageIndex++];
+                var bounds = pe.MarginBounds;
+                float fit  = Math.Min((float)bounds.Width / bmp.Width, (float)bounds.Height / bmp.Height);
+                pe.Graphics!.DrawImage(bmp, new RectangleF(bounds.Left, bounds.Top, bmp.Width * fit, bmp.Height * fit));
+                pe.HasMorePages = pageIndex < pages.Count;
+            };
+
             // Print() goes straight to the default printer — no dialog, no preview.
             printDoc.Print();
             MessageBox.Show(
@@ -405,81 +383,80 @@ public partial class MainForm : Form
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }
+        finally
+        {
+            foreach (var bmp in pages) bmp.Dispose();
+            btnDirectPrint.Text    = "Direct Print";
+            btnDirectPrint.Enabled = true;
+        }
     }
 
     // ---------------------------------------------------------------------------
     // Embedded Preview — uses PrintPreviewControl (not PrintPreviewDialog).
     // PrintPreviewControl is a bare WinForms control that can be embedded inside
     // any form, letting you build a fully custom preview UI around it.
+    // Rasterises the HTML via the WebView→PDF→raster pipeline for pixel-perfect
+    // output.
     //
     // This demonstrates the PrintPreviewControl approach from:
     //   https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-print-in-windows-forms-using-print-preview
     // ---------------------------------------------------------------------------
 
-    private void btnEmbeddedPreview_Click(object sender, EventArgs e)
+    private async void btnEmbeddedPreview_Click(object sender, EventArgs e)
     {
-        string html = txtHtmlContent.Text;
-        if (string.IsNullOrWhiteSpace(html))
-        {
-            MessageBox.Show(
-                "Please enter some HTML content to print.",
-                "Empty Content",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-            return;
-        }
+        if (!TryGetHtml(out string html)) return;
 
-        string plainText = Regex.Replace(html, "<[^>]+>", " ");
-        plainText = Regex.Replace(plainText, @"\s{2,}", " ").Trim();
+        btnEmbeddedPreview.Enabled = false;
+        btnEmbeddedPreview.Text    = "Generating PDF…";
 
-        var reader = new System.IO.StringReader(plainText);
-        var printFont = new Font("Arial", 10f);
-        var printDoc = new PrintDocument { DocumentName = "Embedded Preview — GDI" };
-
-        printDoc.PrintPage += (s, pe) =>
-        {
-            float linesPerPage = pe.MarginBounds.Height / printFont.GetHeight(pe.Graphics!);
-            float yPos = pe.MarginBounds.Top;
-            int count = 0;
-            string? line;
-
-            while (count < linesPerPage && (line = reader.ReadLine()) != null)
-            {
-                pe.Graphics!.DrawString(
-                    line,
-                    printFont,
-                    Brushes.Black,
-                    pe.MarginBounds.Left,
-                    yPos,
-                    new StringFormat());
-                yPos += printFont.GetHeight(pe.Graphics);
-                count++;
-            }
-
-            pe.HasMorePages = reader.Peek() != -1;
-        };
-
-        // Dispose reader and font when the preview form is closed — this fires
-        // regardless of whether the user printed or just closed the window.
-        // PrintPreviewControlForm owns and disposes printDoc (in its Dispose override).
-        var previewForm = new PrintPreviewControlForm(printDoc);
-        previewForm.FormClosed += (s, args) => { reader.Dispose(); printFont.Dispose(); };
-
+        var pages = new List<Bitmap>();
         try
         {
-            previewForm.ShowDialog(this);
+            pages = await RasterizeToPagesAsync(html);
+
+            int pageIndex = 0;
+            var printDoc = new PrintDocument { DocumentName = "Embedded Preview — GDI" };
+            printDoc.BeginPrint += (s, pe) => pageIndex = 0;
+            printDoc.PrintPage  += (s, pe) =>
+            {
+                var bmp    = pages[pageIndex++];
+                var bounds = pe.MarginBounds;
+                float fit  = Math.Min((float)bounds.Width / bmp.Width, (float)bounds.Height / bmp.Height);
+                pe.Graphics!.DrawImage(bmp, new RectangleF(bounds.Left, bounds.Top, bmp.Width * fit, bmp.Height * fit));
+                pe.HasMorePages = pageIndex < pages.Count;
+            };
+
+            // PrintPreviewControlForm owns and disposes printDoc (in its Dispose override).
+            var previewForm = new PrintPreviewControlForm(printDoc);
+            try
+            {
+                previewForm.ShowDialog(this);
+            }
+            finally
+            {
+                previewForm.Dispose();
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"An error occurred:\n\n{ex.Message}",
+                "Embedded Preview Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
         }
         finally
         {
-            previewForm.Dispose();
+            foreach (var bmp in pages) bmp.Dispose();
+            btnEmbeddedPreview.Text    = "Embedded Preview";
+            btnEmbeddedPreview.Enabled = true;
         }
     }
 
     // ---------------------------------------------------------------------------
     // GDI PDF Print — generates a PDF from the current HTML content via
-    // WebView2's PrintToPdfStreamAsync, then rasterises every page with the
-    // Windows.Data.Pdf WinRT API (built into Windows 10+) and shows them in
-    // PrintPreviewDialog so the user can review and send to any printer.
+    // WebView2's PrintToPdfStreamAsync, then rasterises every page and shows
+    // them in PrintPreviewDialog so the user can review and send to any printer.
     //
     // This is the WebView→PDF→raster→GDI path: it produces pixel-perfect output
     // (full CSS/image fidelity via Chromium) while still routing through the
@@ -495,88 +472,20 @@ public partial class MainForm : Form
         btnPrintPdfFile.Enabled = false;
         btnPrintPdfFile.Text    = "Generating PDF…";
 
-        string? tempPdf = null;
         var pages = new List<Bitmap>();
         try
         {
-            // Step 1: render the HTML in the hidden WebView2 and export as PDF.
-            var navTask = WaitForNavigationAsync(_webView!);
-            _webView!.NavigateToString(html);
-            await navTask;
+            pages = await RasterizeToPagesAsync(html);
 
-            using var pdfStream = await _webView.CoreWebView2.PrintToPdfStreamAsync(null);
-
-            if (pdfStream == null || pdfStream.Length == 0)
-            {
-                MessageBox.Show(
-                    "The PDF could not be generated.",
-                    "PDF Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-                return;
-            }
-
-            tempPdf = Path.Combine(
-                Path.GetTempPath(),
-                $"WinFormsPrintSample_gdi_{Guid.NewGuid():N}.pdf");
-
-            using (var fileStream = File.Create(tempPdf))
-            {
-                await pdfStream.CopyToAsync(fileStream);
-            }
-
-            // Step 2: rasterise every page with the Windows.Data.Pdf WinRT API.
-            var storageFile = await StorageFile.GetFileFromPathAsync(tempPdf);
-            var pdfDoc      = await PdfDocument.LoadFromFileAsync(storageFile);
-
-            // Render at 150 DPI for crisp preview.
-            // WinRT reports page sizes in DIPs (96 dpi equivalent), so we scale up.
-            const double renderDpi   = 150.0;
-            const double dipsPerInch = 96.0;
-            double       scale       = renderDpi / dipsPerInch;
-
-            for (uint i = 0; i < pdfDoc.PageCount; i++)
-            {
-                using var page = pdfDoc.GetPage(i);
-
-                var renderOptions = new PdfPageRenderOptions
-                {
-                    DestinationWidth  = (uint)(page.Size.Width  * scale),
-                    DestinationHeight = (uint)(page.Size.Height * scale),
-                };
-
-                using var ras = new InMemoryRandomAccessStream();
-                await page.RenderToStreamAsync(ras, renderOptions);
-
-                // PNG is fully decoded by Bitmap's constructor; the stream can be
-                // disposed once construction returns.
-                ras.Seek(0);
-                using var dotNetStream = ras.AsStreamForRead();
-                pages.Add(new Bitmap(dotNetStream));
-            }
-
-            // Step 3: drive PrintDocument with the rasterised bitmaps.
-            // Index is reset in BeginPrint so both the preview pass and the
-            // subsequent print pass (if the user clicks Print) work correctly.
             int pageIndex = 0;
-
-            using var printDoc = new PrintDocument
-            {
-                DocumentName = "GDI PDF Print",
-            };
-
+            using var printDoc = new PrintDocument { DocumentName = "GDI PDF Print" };
             printDoc.BeginPrint += (s, pe) => pageIndex = 0;
             printDoc.PrintPage  += (s, pe) =>
             {
                 var bmp    = pages[pageIndex++];
                 var bounds = pe.MarginBounds;
-                float fit  = Math.Min(
-                    (float)bounds.Width  / bmp.Width,
-                    (float)bounds.Height / bmp.Height);
-                var dest = new RectangleF(
-                    bounds.Left, bounds.Top,
-                    bmp.Width * fit, bmp.Height * fit);
-                pe.Graphics!.DrawImage(bmp, dest);
+                float fit  = Math.Min((float)bounds.Width / bmp.Width, (float)bounds.Height / bmp.Height);
+                pe.Graphics!.DrawImage(bmp, new RectangleF(bounds.Left, bounds.Top, bmp.Width * fit, bmp.Height * fit));
                 pe.HasMorePages = pageIndex < pages.Count;
             };
 
@@ -601,12 +510,80 @@ public partial class MainForm : Form
         finally
         {
             foreach (var bmp in pages) bmp.Dispose();
+            btnPrintPdfFile.Text    = "GDI PDF Print";
+            btnPrintPdfFile.Enabled = true;
+        }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Shared helper: render HTML in WebView2, export as PDF stream, rasterise
+    // every page at 150 DPI via Windows.Data.Pdf and return the page bitmaps.
+    // The caller is responsible for disposing each Bitmap in the returned list.
+    // ---------------------------------------------------------------------------
+
+    private async Task<List<Bitmap>> RasterizeToPagesAsync(string html)
+    {
+        string? tempPdf = null;
+        try
+        {
+            // Step 1: render the HTML in the hidden WebView2 and export as PDF.
+            var navTask = WaitForNavigationAsync(_webView!);
+            _webView!.NavigateToString(html);
+            await navTask;
+
+            using var pdfStream = await _webView.CoreWebView2.PrintToPdfStreamAsync(null);
+
+            if (pdfStream == null || pdfStream.Length == 0)
+                throw new InvalidOperationException("The PDF could not be generated.");
+
+            tempPdf = Path.Combine(
+                Path.GetTempPath(),
+                $"WinFormsPrintSample_{Guid.NewGuid():N}.pdf");
+
+            using (var fileStream = File.Create(tempPdf))
+            {
+                await pdfStream.CopyToAsync(fileStream);
+            }
+
+            // Step 2: rasterise every page with the Windows.Data.Pdf WinRT API.
+            var storageFile = await StorageFile.GetFileFromPathAsync(tempPdf);
+            var pdfDoc      = await PdfDocument.LoadFromFileAsync(storageFile);
+
+            // Render at 150 DPI for crisp preview.
+            // WinRT reports page sizes in DIPs (96 dpi equivalent), so we scale up.
+            const double renderDpi   = 150.0;
+            const double dipsPerInch = 96.0;
+            double       scale       = renderDpi / dipsPerInch;
+
+            var pages = new List<Bitmap>();
+            for (uint i = 0; i < pdfDoc.PageCount; i++)
+            {
+                using var page = pdfDoc.GetPage(i);
+
+                var renderOptions = new PdfPageRenderOptions
+                {
+                    DestinationWidth  = (uint)(page.Size.Width  * scale),
+                    DestinationHeight = (uint)(page.Size.Height * scale),
+                };
+
+                using var ras = new InMemoryRandomAccessStream();
+                await page.RenderToStreamAsync(ras, renderOptions);
+
+                // PNG is fully decoded by Bitmap's constructor; the stream can be
+                // disposed once construction returns.
+                ras.Seek(0);
+                using var dotNetStream = ras.AsStreamForRead();
+                pages.Add(new Bitmap(dotNetStream));
+            }
+
+            return pages;
+        }
+        finally
+        {
             if (tempPdf is not null)
             {
                 try { File.Delete(tempPdf); } catch { /* ignore */ }
             }
-            btnPrintPdfFile.Text    = "GDI PDF Print";
-            btnPrintPdfFile.Enabled = true;
         }
     }
 
@@ -614,7 +591,8 @@ public partial class MainForm : Form
     // Print Dialog — shows the standard Windows printer-picker (PrintDialog) so the
     // user can choose a printer, number of copies, and page range; then drives
     // PrintDocument.Print() with those settings.  No preview is shown — the output
-    // goes straight to whichever printer the user selected.
+    // goes straight to whichever printer the user selected.  HTML is rasterised
+    // via the WebView→PDF→raster pipeline for pixel-perfect output.
     //
     // PrintDialog is distinct from the OS "System Print" dialog shown by WebView2:
     // here the host app owns the PrintDocument and all rendering logic, giving it
@@ -624,58 +602,39 @@ public partial class MainForm : Form
     //   https://learn.microsoft.com/dotnet/desktop/winforms/printing/how-to-display-print-dialog
     // ---------------------------------------------------------------------------
 
-    private void btnPrintDialog_Click(object sender, EventArgs e)
+    private async void btnPrintDialog_Click(object sender, EventArgs e)
     {
-        string html = txtHtmlContent.Text;
-        if (string.IsNullOrWhiteSpace(html))
-        {
-            MessageBox.Show(
-                "Please enter some HTML content to print.",
-                "Empty Content",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information);
-            return;
-        }
+        if (!TryGetHtml(out string html)) return;
 
-        string plainText = Regex.Replace(html, "<[^>]+>", " ");
-        plainText = Regex.Replace(plainText, @"\s{2,}", " ").Trim();
+        btnPrintDialog.Enabled = false;
+        btnPrintDialog.Text    = "Generating PDF…";
 
-        // BeginPrint rebuilds the queue before each print job; the empty initial
-        // value satisfies the compiler's definite-assignment rule for the closure.
-        Queue<string> lines = new Queue<string>();
-
-        using var printDoc = new PrintDocument { DocumentName = "PrintDialog GDI Print" };
-
-        // 100 characters per line matches the width used by the other GDI methods.
-        printDoc.BeginPrint += (s, pe) =>
-            lines = new Queue<string>(WrapText(plainText, 100));
-
-        printDoc.PrintPage += (s, pe) =>
-        {
-            using var font = new Font("Courier New", 10f);
-            float lineHeight = font.GetHeight(pe.Graphics!);
-            float y = pe.MarginBounds.Top;
-
-            while (lines.Count > 0 && y + lineHeight <= pe.MarginBounds.Bottom)
-            {
-                pe.Graphics!.DrawString(lines.Dequeue(), font, Brushes.Black, pe.MarginBounds.Left, y);
-                y += lineHeight;
-            }
-
-            pe.HasMorePages = lines.Count > 0;
-        };
-
-        using var printDialog = new PrintDialog
-        {
-            Document        = printDoc,
-            AllowSomePages  = true,
-            AllowCurrentPage = true,
-        };
-
-        if (printDialog.ShowDialog(this) != DialogResult.OK) return;
-
+        var pages = new List<Bitmap>();
         try
         {
+            pages = await RasterizeToPagesAsync(html);
+
+            int pageIndex = 0;
+            using var printDoc = new PrintDocument { DocumentName = "PrintDialog GDI Print" };
+            printDoc.BeginPrint += (s, pe) => pageIndex = 0;
+            printDoc.PrintPage  += (s, pe) =>
+            {
+                var bmp    = pages[pageIndex++];
+                var bounds = pe.MarginBounds;
+                float fit  = Math.Min((float)bounds.Width / bmp.Width, (float)bounds.Height / bmp.Height);
+                pe.Graphics!.DrawImage(bmp, new RectangleF(bounds.Left, bounds.Top, bmp.Width * fit, bmp.Height * fit));
+                pe.HasMorePages = pageIndex < pages.Count;
+            };
+
+            using var printDialog = new PrintDialog
+            {
+                Document         = printDoc,
+                AllowSomePages   = true,
+                AllowCurrentPage = true,
+            };
+
+            if (printDialog.ShowDialog(this) != DialogResult.OK) return;
+
             printDoc.Print();
             MessageBox.Show(
                 $"Document sent to \"{printDoc.PrinterSettings.PrinterName}\".",
@@ -690,6 +649,12 @@ public partial class MainForm : Form
                 "Print Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
+        }
+        finally
+        {
+            foreach (var bmp in pages) bmp.Dispose();
+            btnPrintDialog.Text    = "Print Dialog";
+            btnPrintDialog.Enabled = true;
         }
     }
 
