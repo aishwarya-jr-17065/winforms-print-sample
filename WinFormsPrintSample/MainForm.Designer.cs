@@ -197,7 +197,7 @@ partial class MainForm
         // Print PDF File button — picks a PDF by path and shows it in PrintPreviewDialog
         btnPrintPdfFile = new System.Windows.Forms.Button
         {
-            Text = "Print PDF File",
+            Text = "GDI PDF Print",
             Size = new Size(125, 36),
             Dock = DockStyle.Right,
             Font = new Font("Segoe UI", 10f),

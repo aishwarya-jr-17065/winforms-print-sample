@@ -476,41 +476,58 @@ public partial class MainForm : Form
     }
 
     // ---------------------------------------------------------------------------
-    // Print PDF File — lets the user pick any PDF by path, rasterises every
-    // page via the Windows.Data.Pdf WinRT API (built into Windows 10+), then
-    // shows them in PrintPreviewDialog so the user can review and send to any
-    // printer without leaving the application.
+    // GDI PDF Print — generates a PDF from the current HTML content via
+    // WebView2's PrintToPdfStreamAsync, then rasterises every page with the
+    // Windows.Data.Pdf WinRT API (built into Windows 10+) and shows them in
+    // PrintPreviewDialog so the user can review and send to any printer.
+    //
+    // This is the WebView→PDF→raster→GDI path: it produces pixel-perfect output
+    // (full CSS/image fidelity via Chromium) while still routing through the
+    // WinForms printing stack, giving the host app full control over the printer
+    // dialog and page settings — unlike the PDF Print button which stays entirely
+    // inside the in-app WebView2 viewer.
     // ---------------------------------------------------------------------------
 
     private async void btnPrintPdfFile_Click(object sender, EventArgs e)
     {
-        using var dlg = new OpenFileDialog
-        {
-            Title  = "Select a PDF file to preview and print",
-            Filter = "PDF Files (*.pdf)|*.pdf|All Files (*.*)|*.*",
-        };
-
-        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+        if (!TryGetHtml(out string html)) return;
 
         btnPrintPdfFile.Enabled = false;
-        btnPrintPdfFile.Text    = "Loading PDF…";
+        btnPrintPdfFile.Text    = "Generating PDF…";
 
+        string? tempPdf = null;
         var pages = new List<Bitmap>();
         try
         {
-            // Load the PDF using the Windows Runtime API.
-            var storageFile = await StorageFile.GetFileFromPathAsync(dlg.FileName);
-            var pdfDoc      = await PdfDocument.LoadFromFileAsync(storageFile);
+            // Step 1: render the HTML in the hidden WebView2 and export as PDF.
+            var navTask = WaitForNavigationAsync(_webView!);
+            _webView!.NavigateToString(html);
+            await navTask;
 
-            if (pdfDoc.IsPasswordProtected)
+            using var pdfStream = await _webView.CoreWebView2.PrintToPdfStreamAsync(null);
+
+            if (pdfStream == null || pdfStream.Length == 0)
             {
                 MessageBox.Show(
-                    "This PDF is password-protected and cannot be opened.",
+                    "The PDF could not be generated.",
                     "PDF Error",
                     MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                    MessageBoxIcon.Error);
                 return;
             }
+
+            tempPdf = Path.Combine(
+                Path.GetTempPath(),
+                $"WinFormsPrintSample_gdi_{Guid.NewGuid():N}.pdf");
+
+            using (var fileStream = File.Create(tempPdf))
+            {
+                await pdfStream.CopyToAsync(fileStream);
+            }
+
+            // Step 2: rasterise every page with the Windows.Data.Pdf WinRT API.
+            var storageFile = await StorageFile.GetFileFromPathAsync(tempPdf);
+            var pdfDoc      = await PdfDocument.LoadFromFileAsync(storageFile);
 
             // Render at 150 DPI for crisp preview.
             // WinRT reports page sizes in DIPs (96 dpi equivalent), so we scale up.
@@ -538,13 +555,14 @@ public partial class MainForm : Form
                 pages.Add(new Bitmap(dotNetStream));
             }
 
+            // Step 3: drive PrintDocument with the rasterised bitmaps.
             // Index is reset in BeginPrint so both the preview pass and the
             // subsequent print pass (if the user clicks Print) work correctly.
             int pageIndex = 0;
 
             using var printDoc = new PrintDocument
             {
-                DocumentName = Path.GetFileName(dlg.FileName),
+                DocumentName = "GDI PDF Print",
             };
 
             printDoc.BeginPrint += (s, pe) => pageIndex = 0;
@@ -568,22 +586,26 @@ public partial class MainForm : Form
                 StartPosition = FormStartPosition.CenterParent,
                 Width         = 900,
                 Height        = 700,
-                Text          = $"PDF Print Preview — {Path.GetFileName(dlg.FileName)}",
+                Text          = "GDI PDF Print Preview — WebView → PDF → raster → GDI",
             };
             previewDialog.ShowDialog(this);
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                $"Could not load or render the PDF:\n\n{ex.Message}",
-                "PDF Error",
+                $"An error occurred:\n\n{ex.Message}",
+                "GDI PDF Print Error",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }
         finally
         {
             foreach (var bmp in pages) bmp.Dispose();
-            btnPrintPdfFile.Text    = "Print PDF File";
+            if (tempPdf is not null)
+            {
+                try { File.Delete(tempPdf); } catch { /* ignore */ }
+            }
+            btnPrintPdfFile.Text    = "GDI PDF Print";
             btnPrintPdfFile.Enabled = true;
         }
     }
