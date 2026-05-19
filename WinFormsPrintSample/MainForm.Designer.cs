@@ -229,10 +229,12 @@ partial class MainForm
 
         Controls.Add(lblHtmlContent);
         Controls.Add(txtHtmlContent);
-        // gbOtherPrintOptions added first → docks to very bottom edge.
-        // pnlBottom added second → docks just above the GroupBox.
-        Controls.Add(gbOtherPrintOptions);
+        // With DockStyle.Bottom the control at the highest Controls index takes
+        // the very bottom edge first; the next one occupies the space above it.
+        // Add pnlBottom first (index 0 → rendered above) so System/Browser/MSHTML
+        // appear as row 1, then gbOtherPrintOptions (index 1 → very bottom) as row 2.
         Controls.Add(pnlBottom);
+        Controls.Add(gbOtherPrintOptions);
     }
 
     #endregion
