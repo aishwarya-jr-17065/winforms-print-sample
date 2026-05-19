@@ -15,13 +15,9 @@ partial class MainForm
     private System.Windows.Forms.Button btnMshtmlPrint;
     private System.Windows.Forms.Panel pnlBottom;
     private System.Windows.Forms.Button btnGdiPrint;
-    private System.Windows.Forms.Button btnDirectPrint;
     private System.Windows.Forms.Button btnEmbeddedPreview;
-    private System.Windows.Forms.Button btnPrintPdfFile;
-    private System.Windows.Forms.Button btnPrintDialog;
     private System.Windows.Forms.GroupBox gbOtherPrintOptions;
-    private System.Windows.Forms.Panel pnlOtherTop;
-    private System.Windows.Forms.Panel pnlOtherBottom;
+    private System.Windows.Forms.Panel pnlOtherOptions;
 
     /// <summary>
     ///  Clean up any resources being used.
@@ -184,7 +180,7 @@ partial class MainForm
         pnlBottom.Controls.Add(btnMshtmlPrint);
 
         // ── GroupBox — other (newly added) print options ───────────────────────
-        // Row 1: GDI Print | Print Dialog
+        // Single row: GDI Print | Embedded Preview
         btnGdiPrint = new System.Windows.Forms.Button
         {
             Text = "GDI Print",
@@ -193,44 +189,6 @@ partial class MainForm
             Font = new Font("Segoe UI", 10f),
         };
         btnGdiPrint.Click += btnGdiPrint_Click;
-
-        btnPrintDialog = new System.Windows.Forms.Button
-        {
-            Text = "Print Dialog",
-            Size = new Size(115, 36),
-            Dock = DockStyle.Right,
-            Font = new Font("Segoe UI", 10f),
-        };
-        btnPrintDialog.Click += btnPrintDialog_Click;
-
-        pnlOtherTop = new System.Windows.Forms.Panel
-        {
-            Dock = DockStyle.Bottom,
-            Height = 48,
-            Padding = new Padding(8, 6, 8, 6),
-        };
-        // First added = rightmost: GDI Print, Print Dialog
-        pnlOtherTop.Controls.Add(btnGdiPrint);
-        pnlOtherTop.Controls.Add(btnPrintDialog);
-
-        // Row 2: GDI PDF Print | Direct Print | Embedded Preview
-        btnPrintPdfFile = new System.Windows.Forms.Button
-        {
-            Text = "GDI PDF Print",
-            Size = new Size(125, 36),
-            Dock = DockStyle.Right,
-            Font = new Font("Segoe UI", 10f),
-        };
-        btnPrintPdfFile.Click += btnPrintPdfFile_Click;
-
-        btnDirectPrint = new System.Windows.Forms.Button
-        {
-            Text = "Direct Print",
-            Size = new Size(115, 36),
-            Dock = DockStyle.Right,
-            Font = new Font("Segoe UI", 10f),
-        };
-        btnDirectPrint.Click += btnDirectPrint_Click;
 
         btnEmbeddedPreview = new System.Windows.Forms.Button
         {
@@ -241,35 +199,31 @@ partial class MainForm
         };
         btnEmbeddedPreview.Click += btnEmbeddedPreview_Click;
 
-        pnlOtherBottom = new System.Windows.Forms.Panel
+        pnlOtherOptions = new System.Windows.Forms.Panel
         {
             Dock = DockStyle.Bottom,
             Height = 48,
             Padding = new Padding(8, 6, 8, 6),
         };
-        // First added = rightmost: GDI PDF Print, Direct Print, Embedded Preview
-        pnlOtherBottom.Controls.Add(btnPrintPdfFile);
-        pnlOtherBottom.Controls.Add(btnDirectPrint);
-        pnlOtherBottom.Controls.Add(btnEmbeddedPreview);
+        // First added = rightmost: GDI Print, Embedded Preview
+        pnlOtherOptions.Controls.Add(btnGdiPrint);
+        pnlOtherOptions.Controls.Add(btnEmbeddedPreview);
 
         gbOtherPrintOptions = new System.Windows.Forms.GroupBox
         {
             Text = "Other Print Options",
             Dock = DockStyle.Bottom,
-            Height = 120,
+            Height = 66,
             Font = new Font("Segoe UI", 9f, FontStyle.Bold),
             Padding = new Padding(0),
         };
-        // pnlOtherBottom added first → docks to bottom of GroupBox (row 2).
-        // pnlOtherTop added second → sits above it (row 1).
-        gbOtherPrintOptions.Controls.Add(pnlOtherBottom);
-        gbOtherPrintOptions.Controls.Add(pnlOtherTop);
+        gbOtherPrintOptions.Controls.Add(pnlOtherOptions);
 
         // ── Form ─────────────────────────────────────────────────────────────
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
-        ClientSize = new Size(800, 646);
-        MinimumSize = new Size(640, 476);
+        ClientSize = new Size(800, 600);
+        MinimumSize = new Size(640, 430);
         Text = "WinForms HTML Print Sample";
         StartPosition = FormStartPosition.CenterScreen;
 
