@@ -163,6 +163,19 @@ public partial class MainForm : Form
                 pe.HasMorePages = pageIndex < pages.Count;
             };
 
+            // Show a PrintDialog first so the user can choose the destination
+            // printer and settings.  PrintPreviewDialog's built-in print button
+            // calls printDoc.Print() directly (no printer-selection step), so
+            // without this the job would silently go to the system default
+            // printer — which is often "Microsoft Print to PDF", causing a
+            // Save-As file picker to appear instead of physical printing.
+            using var printDlg = new PrintDialog
+            {
+                Document       = printDoc,
+                AllowSomePages = true,
+            };
+            if (printDlg.ShowDialog(this) != DialogResult.OK) return;
+
             using var previewDialog = new PrintPreviewDialog
             {
                 Document      = printDoc,
