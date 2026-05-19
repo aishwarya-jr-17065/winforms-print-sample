@@ -15,13 +15,10 @@ partial class MainForm
     private System.Windows.Forms.Button btnMshtmlPrint;
     private System.Windows.Forms.Panel pnlBottom;
     private System.Windows.Forms.Button btnGdiPrint;
-    private System.Windows.Forms.Button btnPdfPrint;
-    private System.Windows.Forms.Button btnScreenPrint;
     private System.Windows.Forms.Button btnDirectPrint;
     private System.Windows.Forms.Button btnEmbeddedPreview;
     private System.Windows.Forms.Button btnPrintPdfFile;
     private System.Windows.Forms.Button btnPrintDialog;
-    private System.Windows.Forms.Button btnPageSetup;
     private System.Windows.Forms.GroupBox gbOtherPrintOptions;
     private System.Windows.Forms.Panel pnlOtherTop;
     private System.Windows.Forms.Panel pnlOtherBottom;
@@ -181,35 +178,13 @@ partial class MainForm
         };
         btnMshtmlPrint.Click += btnMshtmlPrint_Click;
 
-        // Screen Print button
-        btnScreenPrint = new System.Windows.Forms.Button
-        {
-            Text = "Screen Print",
-            Size = new Size(120, 36),
-            Dock = DockStyle.Right,
-            Font = new Font("Segoe UI", 10f),
-        };
-        btnScreenPrint.Click += btnScreenPrint_Click;
-
-        // Page Setup button
-        btnPageSetup = new System.Windows.Forms.Button
-        {
-            Text = "Page Setup",
-            Size = new Size(110, 36),
-            Dock = DockStyle.Right,
-            Font = new Font("Segoe UI", 10f),
-        };
-        btnPageSetup.Click += btnPageSetup_Click;
-
         // Add right-to-left: first added = rightmost.
         pnlBottom.Controls.Add(btnSystemPrint);
         pnlBottom.Controls.Add(btnBrowserPrint);
         pnlBottom.Controls.Add(btnMshtmlPrint);
-        pnlBottom.Controls.Add(btnScreenPrint);
-        pnlBottom.Controls.Add(btnPageSetup);
 
         // ── GroupBox — other (newly added) print options ───────────────────────
-        // Row 1: GDI Print | PDF Print | Print Dialog
+        // Row 1: GDI Print | Print Dialog
         btnGdiPrint = new System.Windows.Forms.Button
         {
             Text = "GDI Print",
@@ -218,15 +193,6 @@ partial class MainForm
             Font = new Font("Segoe UI", 10f),
         };
         btnGdiPrint.Click += btnGdiPrint_Click;
-
-        btnPdfPrint = new System.Windows.Forms.Button
-        {
-            Text = "PDF Print",
-            Size = new Size(110, 36),
-            Dock = DockStyle.Right,
-            Font = new Font("Segoe UI", 10f),
-        };
-        btnPdfPrint.Click += btnPdfPrint_Click;
 
         btnPrintDialog = new System.Windows.Forms.Button
         {
@@ -243,9 +209,8 @@ partial class MainForm
             Height = 48,
             Padding = new Padding(8, 6, 8, 6),
         };
-        // First added = rightmost: GDI Print, PDF Print, Print Dialog
+        // First added = rightmost: GDI Print, Print Dialog
         pnlOtherTop.Controls.Add(btnGdiPrint);
-        pnlOtherTop.Controls.Add(btnPdfPrint);
         pnlOtherTop.Controls.Add(btnPrintDialog);
 
         // Row 2: GDI PDF Print | Direct Print | Embedded Preview
