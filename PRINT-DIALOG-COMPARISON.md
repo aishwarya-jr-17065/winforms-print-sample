@@ -71,6 +71,10 @@ The classic WinForms printing approach using `System.Drawing.Printing`. Entirely
 - Cannot render HTML/CSS — not suitable for printing web content.
 - GDI pagination and layout must be implemented manually.
 
+**Why GDI Print does not show a separate print-picker dialog:**
+
+`PrintPreviewDialog` is a self-contained WinForms popup. It has its own toolbar that contains a print button. When the user clicks that button, `PrintPreviewDialog` calls `printDocument.Print()` internally and directly — it does **not** create or show a `PrintDialog` first. The job is sent immediately to whichever printer is already set in `printDocument.PrinterSettings` (the system default if you have not changed it). There is no separate printer-selection step unless you wire one up yourself.
+
 ---
 
 ## 4. PDF Print (`CoreWebView2.PrintToPdfAsync`)
@@ -169,6 +173,12 @@ Implements the MS docs "[How to print in Windows Forms using Print Preview](http
 - You must build the surrounding toolbar yourself (`PrintPreviewDialog` gives you this for free).
 - Cannot render HTML/CSS.
 
+**How Embedded Preview shows the print-picker dialog:**
+
+`PrintPreviewControlForm` has a custom "Print…" button. When clicked, `OnPrintClick` explicitly creates a `new PrintDialog { Document = _printDocument, AllowSomePages = true }` and calls `dlg.ShowDialog(this)`. This opens the native Win32 `PrintDlgEx` dialog — the OS-level printer picker — where the user can choose a printer, set copies, page range, etc. Only after the user clicks OK does the code call `_printDocument.Print()`.
+
+This is the direct opposite of how `PrintPreviewDialog` works: because you build the toolbar yourself you are free to call `PrintDialog.ShowDialog()` before printing, whereas `PrintPreviewDialog`'s built-in print button skips that step entirely.
+
 **Key difference from GDI Print (approach #3):**
 
 | | GDI Print | Embedded Preview |
@@ -176,6 +186,7 @@ Implements the MS docs "[How to print in Windows Forms using Print Preview](http
 | Preview container | `PrintPreviewDialog` (complete dialog) | `PrintPreviewControl` (raw control, custom form) |
 | Toolbar | Built-in | You build it |
 | Embedding | Popup dialog only | Anywhere in your form |
+| Printer-picker dialog | ❌ None — prints to default immediately | ✅ `PrintDialog.ShowDialog()` before printing |
 
 ---
 
@@ -235,3 +246,52 @@ The old WinForms `WebBrowser` control wraps the MSHTML (Trident) engine — the 
 | Batch / silent / automated printing (no user interaction) | **Direct Print** |
 | Custom print preview UI embedded inside your form | **Embedded Preview** (`PrintPreviewControl`) |
 | Legacy IE compatibility | **Do not use** — MSHTML is deprecated |
+
+---
+
+## 9. The WinRT / Modern Windows Print Dialog (`Windows.Graphics.Printing.PrintManager`)
+
+The dialog shown in the screenshot below is **not** the classic Win32 `PrintDlgEx` dialog. It is the **WinRT `PrintManager`** print UI — the same modern print sheet you see when you press `Ctrl+P` in Microsoft Edge, Trident/Zoho Mail, or any UWP/WinUI 3 app. It shows printer, orientation, copies, colour mode, pages, and collate options in a dark-themed flyout with a live preview pane on the right.
+
+> **This dialog is not shown by any of the eight approaches in this sample, and it cannot be trivially added to a WinForms app.** Here is why, and what would be needed to support it.
+
+### Why WinForms cannot use `PrintManager` out of the box
+
+| Blocker | Detail |
+|---|---|
+| **`CoreWindow` / `CoreApplicationView` required** | `PrintManager.GetForCurrentView()` looks up the `PrintManager` for the current UWP `CoreApplicationView`. WinForms has no `CoreApplicationView`; calling this API from a WinForms process throws `System.Exception: Element not found`. |
+| **HWND interop only partially helps** | Desktop apps (Win32, WinForms, WPF) can bypass `GetForCurrentView()` by using the `PrintManagerInterop` COM interface (`Windows.Graphics.Printing.PrintManagerInterop`) together with `IInitializeWithWindow`. `PrintManagerInterop.GetForWindow(hwnd)` gives you a `PrintManager` tied to a specific HWND. This makes it possible to show the print UI flyout. However, showing the flyout is only one half of the problem. |
+| **Content pipeline requires XAML `UIElement`** | Once the flyout is visible, Windows fires `PrintTaskRequested`. The app must create a `PrintTask` backed by a `Windows.Graphics.Printing.PrintDocument` (a WinRT type, completely separate from `System.Drawing.Printing.PrintDocument`). That WinRT `PrintDocument` fires three callbacks — `Paginate`, `GetPreviewPage`, and `AddPages` — each of which must supply a **XAML `UIElement`** to be rendered into the preview and onto the page. WinForms uses GDI and Win32 rendering; it has no XAML `UIElement` objects to provide. |
+| **No built-in WinRT print support in WinForms** | The `System.Drawing.Printing` stack (used by `PrintDocument`, `PrintPreviewDialog`, `PrintDialog`) is entirely separate from the WinRT print pipeline. There is no official bridge between the two. |
+
+### Can it be supported — and how?
+
+Yes, technically, but it requires significant additional infrastructure:
+
+1. **Use `PrintManagerInterop` to show the flyout.**  
+   Call `PrintManagerInterop.GetForWindow(this.Handle)`, subscribe to `PrintTaskRequested`, then call `ShowPrintUIForWindowAsync(this.Handle)`. This part works in a WinForms app.
+
+2. **Feed content through the WinRT pipeline.**  
+   In the `PrintTaskRequested` handler you create a `PrintTask`. The task's source must implement the WinRT `IPrintDocumentSource` interface. The only practical way to produce XAML `UIElement` content in a WinForms process is to either:
+   - **Host a XAML Island** (`Microsoft.Xaml.Controls.XamlIsland` / `WindowsXamlManager`) inside the WinForms app. Render your content as XAML and let it flow through the WinRT callbacks. This is the approach used by WinUI 3 desktop apps, but it pulls in a significant XAML hosting dependency.
+   - **Rasterise to `BitmapImage`**. Convert each print page to a bitmap (e.g. via `Graphics.CopyFromScreen`, GDI, or the WebView→PDF→raster pipeline already used in this sample), then wrap each bitmap in a XAML `Image` element and supply it in `GetPreviewPage` / `AddPages`. This avoids XAML layout but still requires a `WindowsXamlManager` to be initialised so that WinRT can create XAML nodes.
+
+3. **Why this is not done in this sample.**  
+   - Hosting a XAML Island adds `Microsoft.WindowsAppSDK` or WinUI 3 runtime dependencies.  
+   - The `WindowsXamlManager` must be initialised on the UI thread before any XAML object is created.  
+   - The rasterise-and-feed approach duplicates the existing PDF→raster pipeline but routes the output through a completely different (and much more complex) channel just to show a different print dialog.  
+   - The end result for the user — selecting a printer and printing pages — is identical to using `PrintDialog` (Win32) or `CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.System)`, which are already demonstrated in this sample with zero extra dependencies.
+
+### Summary
+
+| | Win32 `PrintDialog` | WinRT `PrintManager` flyout |
+|---|---|---|
+| Works in WinForms out of the box | ✅ Yes | ❌ No |
+| Requires HWND interop | No | Yes (`PrintManagerInterop`) |
+| Requires XAML / WinUI hosting | No | Yes (for preview content) |
+| Shows live print preview | No | Yes |
+| Official WinForms support | ✅ | ❌ Not supported |
+| Feasible with extra work | — | Yes, with XAML Islands + significant effort |
+
+> **Recommendation:** For a native modern-looking print picker in a WinForms app today, the closest practical option is the **Browser dialog** (approach #2) — Chromium's print sheet rendered inside a WebView2 window — which gives a live preview and a rich settings panel without any XAML hosting complexity.
+
