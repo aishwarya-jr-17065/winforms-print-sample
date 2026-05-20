@@ -97,9 +97,11 @@ Uses `System.Drawing.Printing` with a `PrintPreviewDialog`. Rather than strippin
 - Raster output — not vector; very large or detailed pages may show slight pixelation at extreme zoom.
 - GDI pagination is fixed by the PDF page count; layout cannot be customised further.
 
-**Why GDI Print does not show a separate print-picker dialog:**
+**How GDI Print shows a separate print-picker dialog:**
 
-`PrintPreviewDialog` is a self-contained WinForms popup. It has its own toolbar that contains a print button. When the user clicks that button, `PrintPreviewDialog` calls `printDocument.Print()` internally and directly — it does **not** create or show a `PrintDialog` first. The job is sent immediately to whichever printer is already set in `printDocument.PrinterSettings` (the system default if you have not changed it). There is no separate printer-selection step unless you wire one up yourself.
+`PrintPreviewDialog` is a self-contained WinForms popup. It has its own toolbar that contains a print button. By default, clicking that button calls `printDocument.Print()` directly — without opening a `PrintDialog` first — and the job is sent immediately to whichever printer is already set in `printDocument.PrinterSettings`.
+
+To add a printer-selection step, the `BeginPrint` event is used to intercept that call. `PrintPreviewDialog` renders its preview by setting the document's `PrintController` to a `PreviewPrintController` internally before calling `Print()`, so the handler can detect which pass is running: if the controller is a `PreviewPrintController`, it is a preview-rendering pass and is skipped; otherwise, the toolbar print button was clicked, the job is cancelled, a `PrintDialog` is shown, and `Print()` is called again only if the user confirms. A boolean guard (`printDialogShown`) prevents the second `Print()` call from triggering another dialog open.
 
 ---
 
@@ -142,7 +144,7 @@ This is the direct opposite of how `PrintPreviewDialog` works: because you build
 | Preview container | `PrintPreviewDialog` (complete dialog) | `PrintPreviewControl` (raw control, custom form) |
 | Toolbar | Built-in | You build it |
 | Embedding | Popup dialog only | Anywhere in your form |
-| Printer-picker dialog | ❌ None — prints to default immediately | ✅ `PrintDialog.ShowDialog()` before printing |
+| Printer-picker dialog | ✅ `PrintDialog.ShowDialog()` before printing (via `BeginPrint` interception) | ✅ `PrintDialog.ShowDialog()` before printing |
 
 ---
 

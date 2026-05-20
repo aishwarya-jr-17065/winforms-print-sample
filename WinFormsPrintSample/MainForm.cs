@@ -163,6 +163,39 @@ public partial class MainForm : Form
                 pe.HasMorePages = pageIndex < pages.Count;
             };
 
+            // Wire up PrintDialog so clicking Print inside PrintPreviewDialog opens a
+            // printer-selection dialog rather than printing immediately to the default printer.
+            // PrintPreviewDialog renders its preview by setting PrintController to a
+            // PreviewPrintController and calling Print() internally, so we skip that pass
+            // and only intercept the real print triggered by the toolbar button.
+            // Safe to use a plain bool here: WinForms fires all events on the UI thread.
+            bool printDialogShown = false;
+            printDoc.BeginPrint += (s, pe) =>
+            {
+                // Skip the preview-rendering pass.
+                if (printDoc.PrintController is PreviewPrintController)
+                    return;
+
+                // The user already approved via PrintDialog — let this pass through.
+                if (printDialogShown)
+                    return;
+
+                // Toolbar Print button was clicked — cancel the immediate job and
+                // show PrintDialog so the user can pick a printer and page range first.
+                pe.Cancel = true;
+                printDialogShown = true;
+                try
+                {
+                    using var dlg = new PrintDialog { Document = printDoc, AllowSomePages = true };
+                    if (dlg.ShowDialog(this) == DialogResult.OK)
+                        printDoc.Print();
+                }
+                finally
+                {
+                    printDialogShown = false;
+                }
+            };
+
             using var previewDialog = new PrintPreviewDialog
             {
                 Document      = printDoc,
