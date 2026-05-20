@@ -25,12 +25,11 @@ internal sealed class BrowserPrintForm : Form
 
         // ── Form properties ───────────────────────────────────────────────
         Text = "Browser Print Preview";
-        StartPosition = FormStartPosition.CenterParent;
         Size = new Size(960, 720);
         MinimumSize = new Size(640, 480);
         WindowState = FormWindowState.Maximized;
         KeyPreview = true;
-        KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) Close(); };
+        KeyDown += OnFormKeyDown;
 
         // ── Bottom panel ──────────────────────────────────────────────────
         var pnlBottom = new Panel
@@ -133,6 +132,19 @@ internal sealed class BrowserPrintForm : Form
         // Because _webView is visible and full-size, Chromium can render the
         // print preview correctly — no "This app doesn't support print preview".
         _webView.CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.Browser);
+    }
+
+    // -----------------------------------------------------------------------
+    // Key handler: Escape closes the full-screen form
+    // -----------------------------------------------------------------------
+
+    private void OnFormKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.KeyCode == Keys.Escape)
+        {
+            e.Handled = true;
+            Close();
+        }
     }
 
     // -----------------------------------------------------------------------
