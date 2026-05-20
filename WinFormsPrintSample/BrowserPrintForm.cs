@@ -28,6 +28,9 @@ internal sealed class BrowserPrintForm : Form
         StartPosition = FormStartPosition.CenterParent;
         Size = new Size(960, 720);
         MinimumSize = new Size(640, 480);
+        WindowState = FormWindowState.Maximized;
+        KeyPreview = true;
+        KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) Close(); };
 
         // ── Bottom panel ──────────────────────────────────────────────────
         var pnlBottom = new Panel
