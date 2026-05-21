@@ -10,6 +10,7 @@ partial class MainForm
     // Controls
     private System.Windows.Forms.Label lblHtmlContent;
     private System.Windows.Forms.TextBox txtHtmlContent;
+    private System.Windows.Forms.Button btnClearHtml;
     private System.Windows.Forms.Button btnSystemPrint;
     private System.Windows.Forms.Button btnBrowserPrint;
     private System.Windows.Forms.Button btnMshtmlPrint;
@@ -52,6 +53,17 @@ partial class MainForm
             Font = new Font("Segoe UI", 9.75f, FontStyle.Regular),
             Location = new Point(12, 12),
         };
+
+        // ── Clear button (top-right of editor) ───────────────────────────────
+        btnClearHtml = new System.Windows.Forms.Button
+        {
+            Text = "Clear",
+            Size = new Size(70, 22),
+            Location = new Point(718, 11),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Font = new Font("Segoe UI", 8.5f),
+        };
+        btnClearHtml.Click += (_, _) => txtHtmlContent.Clear();
 
         // ── TextBox (multiline HTML editor) ──────────────────────────────────
         txtHtmlContent = new System.Windows.Forms.TextBox
@@ -262,6 +274,7 @@ partial class MainForm
         StartPosition = FormStartPosition.CenterScreen;
 
         Controls.Add(lblHtmlContent);
+        Controls.Add(btnClearHtml);
         Controls.Add(txtHtmlContent);
         // With DockStyle.Bottom the control at the highest Controls index takes
         // the very bottom edge first; the next one occupies the space above it.
