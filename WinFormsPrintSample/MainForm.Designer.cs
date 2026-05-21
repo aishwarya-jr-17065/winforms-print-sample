@@ -211,9 +211,12 @@ partial class MainForm
         };
         cboQuality.Items.AddRange(new object[]
         {
-            "Screen  (96 DPI)   — lowest memory",
+            "Screen   (96 DPI)  — lowest memory",
             "Draft   (150 DPI)  — balanced",
+            "Medium  (200 DPI)  — good balance",
             "Standard (300 DPI) — good quality",
+            "Enhanced (400 DPI) — high quality",
+            "Superior (500 DPI) — very high quality",
             "High    (600 DPI)  — max quality",
         });
         cboQuality.SelectedIndex = 1; // Default: Draft (150 DPI)
