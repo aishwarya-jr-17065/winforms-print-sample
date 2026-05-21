@@ -333,10 +333,13 @@ public partial class MainForm : Form
 
     private double GetSelectedRenderDpi() => cboQuality.SelectedIndex switch
     {
-        0 => 96.0,   // Screen  — lowest memory, fastest
-        1 => 150.0,  // Draft   — balanced (default)
-        2 => 300.0,  // Standard — good quality for most printers
-        3 => 600.0,  // High    — maximum quality, highest memory
+        0 => 96.0,   // Screen   — lowest memory, fastest
+        1 => 150.0,  // Draft    — balanced (default)
+        2 => 200.0,  // Medium   — good balance
+        3 => 300.0,  // Standard — good quality for most printers
+        4 => 400.0,  // Enhanced — high quality
+        5 => 500.0,  // Superior — very high quality
+        6 => 600.0,  // High     — maximum quality, highest memory
         _ => 150.0,
     };
 

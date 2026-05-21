@@ -10,6 +10,7 @@ partial class MainForm
     // Controls
     private System.Windows.Forms.Label lblHtmlContent;
     private System.Windows.Forms.TextBox txtHtmlContent;
+    private System.Windows.Forms.Button btnClearHtml;
     private System.Windows.Forms.Button btnSystemPrint;
     private System.Windows.Forms.Button btnBrowserPrint;
     private System.Windows.Forms.Button btnMshtmlPrint;
@@ -18,7 +19,6 @@ partial class MainForm
     private System.Windows.Forms.Button btnEmbeddedPreview;
     private System.Windows.Forms.GroupBox gbOtherPrintOptions;
     private System.Windows.Forms.Panel pnlOtherOptions;
-    private System.Windows.Forms.Label lblPrintQuality;
     private System.Windows.Forms.ComboBox cboQuality;
 
     /// <summary>
@@ -52,6 +52,17 @@ partial class MainForm
             Font = new Font("Segoe UI", 9.75f, FontStyle.Regular),
             Location = new Point(12, 12),
         };
+
+        // ── Clear button (top-right of editor) ───────────────────────────────
+        btnClearHtml = new System.Windows.Forms.Button
+        {
+            Text = "Clear",
+            Size = new Size(70, 22),
+            Location = new Point(718, 11),
+            Anchor = AnchorStyles.Top | AnchorStyles.Right,
+            Font = new Font("Segoe UI", 8.5f),
+        };
+        btnClearHtml.Click += (_, _) => txtHtmlContent.Clear();
 
         // ── TextBox (multiline HTML editor) ──────────────────────────────────
         txtHtmlContent = new System.Windows.Forms.TextBox
@@ -209,24 +220,18 @@ partial class MainForm
             Dock = DockStyle.Right,
             Font = new Font("Segoe UI", 9.5f),
         };
+        // Scale factors are relative to the 96 DPI screen baseline (e.g. 150/96 ≈ 1.5×).
         cboQuality.Items.AddRange(new object[]
         {
-            "Screen  (96 DPI)   — lowest memory",
-            "Draft   (150 DPI)  — balanced",
-            "Standard (300 DPI) — good quality",
-            "High    (600 DPI)  — max quality",
+            "Screen   (96 DPI, 1×)",
+            "Draft   (150 DPI, 1.5×)",
+            "Medium  (200 DPI, 2×)",
+            "Standard (300 DPI, 3×)",
+            "Enhanced (400 DPI, 4×)",
+            "Superior (500 DPI, 5×)",
+            "High    (600 DPI, 6×)",
         });
         cboQuality.SelectedIndex = 1; // Default: Draft (150 DPI)
-
-        lblPrintQuality = new System.Windows.Forms.Label
-        {
-            Text = "Print Quality:",
-            AutoSize = false,
-            Size = new Size(90, 36),
-            Dock = DockStyle.Right,
-            TextAlign = ContentAlignment.MiddleRight,
-            Font = new Font("Segoe UI", 9f),
-        };
 
         pnlOtherOptions = new System.Windows.Forms.Panel
         {
@@ -234,11 +239,10 @@ partial class MainForm
             Height = 48,
             Padding = new Padding(8, 6, 8, 6),
         };
-        // First added = rightmost: PrintPreviewDialog() Print, PrintDialog() Print, quality dropdown, label
-        pnlOtherOptions.Controls.Add(btnGdiPrint);
-        pnlOtherOptions.Controls.Add(btnEmbeddedPreview);
+        // Layout (left → right): [dropdown] [PrintDialog() Print] [PrintPreviewDialog() Print]
         pnlOtherOptions.Controls.Add(cboQuality);
-        pnlOtherOptions.Controls.Add(lblPrintQuality);
+        pnlOtherOptions.Controls.Add(btnEmbeddedPreview);
+        pnlOtherOptions.Controls.Add(btnGdiPrint);
 
         gbOtherPrintOptions = new System.Windows.Forms.GroupBox
         {
@@ -259,6 +263,7 @@ partial class MainForm
         StartPosition = FormStartPosition.CenterScreen;
 
         Controls.Add(lblHtmlContent);
+        Controls.Add(btnClearHtml);
         Controls.Add(txtHtmlContent);
         // With DockStyle.Bottom the control at the highest Controls index takes
         // the very bottom edge first; the next one occupies the space above it.
