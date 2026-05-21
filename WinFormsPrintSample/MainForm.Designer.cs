@@ -19,7 +19,6 @@ partial class MainForm
     private System.Windows.Forms.Button btnEmbeddedPreview;
     private System.Windows.Forms.GroupBox gbOtherPrintOptions;
     private System.Windows.Forms.Panel pnlOtherOptions;
-    private System.Windows.Forms.Label lblPrintQuality;
     private System.Windows.Forms.ComboBox cboQuality;
 
     /// <summary>
@@ -221,27 +220,18 @@ partial class MainForm
             Dock = DockStyle.Right,
             Font = new Font("Segoe UI", 9.5f),
         };
+        // Scale factors are relative to the 96 DPI screen baseline (e.g. 150/96 ≈ 1.5×).
         cboQuality.Items.AddRange(new object[]
         {
-            "Screen   (96 DPI)  — lowest memory",
-            "Draft   (150 DPI)  — balanced",
-            "Medium  (200 DPI)  — good balance",
-            "Standard (300 DPI) — good quality",
-            "Enhanced (400 DPI) — high quality",
-            "Superior (500 DPI) — very high quality",
-            "High    (600 DPI)  — max quality",
+            "Screen   (96 DPI, 1×)",
+            "Draft   (150 DPI, 1.5×)",
+            "Medium  (200 DPI, 2×)",
+            "Standard (300 DPI, 3×)",
+            "Enhanced (400 DPI, 4×)",
+            "Superior (500 DPI, 5×)",
+            "High    (600 DPI, 6×)",
         });
         cboQuality.SelectedIndex = 1; // Default: Draft (150 DPI)
-
-        lblPrintQuality = new System.Windows.Forms.Label
-        {
-            Text = "Print Quality:",
-            AutoSize = false,
-            Size = new Size(90, 36),
-            Dock = DockStyle.Right,
-            TextAlign = ContentAlignment.MiddleRight,
-            Font = new Font("Segoe UI", 9f),
-        };
 
         pnlOtherOptions = new System.Windows.Forms.Panel
         {
@@ -249,11 +239,10 @@ partial class MainForm
             Height = 48,
             Padding = new Padding(8, 6, 8, 6),
         };
-        // First added = rightmost: PrintPreviewDialog() Print, PrintDialog() Print, quality dropdown, label
-        pnlOtherOptions.Controls.Add(btnGdiPrint);
-        pnlOtherOptions.Controls.Add(btnEmbeddedPreview);
+        // Layout (left → right): [dropdown] [PrintDialog() Print] [PrintPreviewDialog() Print]
         pnlOtherOptions.Controls.Add(cboQuality);
-        pnlOtherOptions.Controls.Add(lblPrintQuality);
+        pnlOtherOptions.Controls.Add(btnEmbeddedPreview);
+        pnlOtherOptions.Controls.Add(btnGdiPrint);
 
         gbOtherPrintOptions = new System.Windows.Forms.GroupBox
         {
