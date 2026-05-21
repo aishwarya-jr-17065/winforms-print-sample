@@ -290,10 +290,10 @@ public partial class MainForm : Form
             var storageFile = await StorageFile.GetFileFromPathAsync(tempPdf);
             var pdfDoc      = await PdfDocument.LoadFromFileAsync(storageFile);
 
-            // Render at the requested DPI. WinRT reports page sizes in DIPs (96 dpi
-            // equivalent), so we derive a scale factor from the target render DPI.
+            // WinRT PdfPage.Size is in DIPs. By Windows definition, 1 DIP = 1/96 inch —
+            // a fixed platform constant, not a runtime display measurement.
             const double dipsPerInch = 96.0;
-            double       scale       = renderDpi / dipsPerInch;
+            double       scale       = renderDpi / dipsPerInch; // convert DIP dimensions → output pixels (e.g. 150 ÷ 96 ≈ 1.5625 at 150 DPI)
 
             var pages = new List<Bitmap>();
             for (uint i = 0; i < pdfDoc.PageCount; i++)
