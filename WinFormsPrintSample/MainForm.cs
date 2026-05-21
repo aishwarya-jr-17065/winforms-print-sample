@@ -184,7 +184,7 @@ public partial class MainForm : Form
         finally
         {
             foreach (var bmp in pages) bmp.Dispose();
-            btnGdiPrint.Text    = "GDI Print";
+            btnGdiPrint.Text    = "PrintPreviewDialog() Print";
             btnGdiPrint.Enabled = true;
         }
     }
@@ -206,12 +206,14 @@ public partial class MainForm : Form
         if (!TryGetHtml(out string html)) return;
 
         btnEmbeddedPreview.Enabled = false;
+        cboQuality.Enabled         = false;
         btnEmbeddedPreview.Text    = "Generating PDF…";
 
+        double renderDpi = GetSelectedRenderDpi();
         var pages = new List<Bitmap>();
         try
         {
-            pages = await RasterizeToPagesAsync(html);
+            pages = await RasterizeToPagesAsync(html, renderDpi);
 
             int pageIndex = 0;
             var printDoc = new PrintDocument { DocumentName = "Embedded Preview — GDI" };
@@ -248,8 +250,9 @@ public partial class MainForm : Form
         finally
         {
             foreach (var bmp in pages) bmp.Dispose();
-            btnEmbeddedPreview.Text    = "Embedded Preview";
+            btnEmbeddedPreview.Text    = "PrintDialog() Print";
             btnEmbeddedPreview.Enabled = true;
+            cboQuality.Enabled         = true;
         }
     }
 
@@ -259,7 +262,7 @@ public partial class MainForm : Form
     // The caller is responsible for disposing each Bitmap in the returned list.
     // ---------------------------------------------------------------------------
 
-    private async Task<List<Bitmap>> RasterizeToPagesAsync(string html)
+    private async Task<List<Bitmap>> RasterizeToPagesAsync(string html, double renderDpi = 150.0)
     {
         string? tempPdf = null;
         try
@@ -287,9 +290,8 @@ public partial class MainForm : Form
             var storageFile = await StorageFile.GetFileFromPathAsync(tempPdf);
             var pdfDoc      = await PdfDocument.LoadFromFileAsync(storageFile);
 
-            // Render at 150 DPI for crisp preview.
-            // WinRT reports page sizes in DIPs (96 dpi equivalent), so we scale up.
-            const double renderDpi   = 150.0;
+            // Render at the requested DPI. WinRT reports page sizes in DIPs (96 dpi
+            // equivalent), so we derive a scale factor from the target render DPI.
             const double dipsPerInch = 96.0;
             double       scale       = renderDpi / dipsPerInch;
 
@@ -324,6 +326,19 @@ public partial class MainForm : Form
             }
         }
     }
+
+    // ---------------------------------------------------------------------------
+    // Helper: map the Print Quality combo-box selection to a render DPI value.
+    // ---------------------------------------------------------------------------
+
+    private double GetSelectedRenderDpi() => cboQuality.SelectedIndex switch
+    {
+        0 => 96.0,   // Screen  — lowest memory, fastest
+        1 => 150.0,  // Draft   — balanced (default)
+        2 => 300.0,  // Standard — good quality for most printers
+        3 => 600.0,  // High    — maximum quality, highest memory
+        _ => 150.0,
+    };
 
     // ---------------------------------------------------------------------------
     private bool TryGetHtml(out string html)
