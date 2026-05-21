@@ -18,6 +18,8 @@ partial class MainForm
     private System.Windows.Forms.Button btnEmbeddedPreview;
     private System.Windows.Forms.GroupBox gbOtherPrintOptions;
     private System.Windows.Forms.Panel pnlOtherOptions;
+    private System.Windows.Forms.Label lblPrintQuality;
+    private System.Windows.Forms.ComboBox cboQuality;
 
     /// <summary>
     ///  Clean up any resources being used.
@@ -180,11 +182,11 @@ partial class MainForm
         pnlBottom.Controls.Add(btnMshtmlPrint);
 
         // ── GroupBox — other (newly added) print options ───────────────────────
-        // Single row: GDI Print | Embedded Preview
+        // Single row: [Print Quality:] [dropdown] [PrintDialog() Print] [PrintPreviewDialog() Print]
         btnGdiPrint = new System.Windows.Forms.Button
         {
-            Text = "GDI Print",
-            Size = new Size(110, 36),
+            Text = "PrintPreviewDialog() Print",
+            Size = new Size(230, 36),
             Dock = DockStyle.Right,
             Font = new Font("Segoe UI", 10f),
         };
@@ -192,12 +194,39 @@ partial class MainForm
 
         btnEmbeddedPreview = new System.Windows.Forms.Button
         {
-            Text = "Embedded Preview",
-            Size = new Size(155, 36),
+            Text = "PrintDialog() Print",
+            Size = new Size(175, 36),
             Dock = DockStyle.Right,
             Font = new Font("Segoe UI", 10f),
         };
         btnEmbeddedPreview.Click += btnEmbeddedPreview_Click;
+
+        // Quality selector — applies to PrintDialog() Print only
+        cboQuality = new System.Windows.Forms.ComboBox
+        {
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            Size = new Size(175, 36),
+            Dock = DockStyle.Right,
+            Font = new Font("Segoe UI", 9.5f),
+        };
+        cboQuality.Items.AddRange(new object[]
+        {
+            "Screen  (96 DPI)   — lowest memory",
+            "Draft   (150 DPI)  — balanced",
+            "Standard (300 DPI) — good quality",
+            "High    (600 DPI)  — max quality",
+        });
+        cboQuality.SelectedIndex = 1; // Default: Draft (150 DPI)
+
+        lblPrintQuality = new System.Windows.Forms.Label
+        {
+            Text = "Print Quality:",
+            AutoSize = false,
+            Size = new Size(90, 36),
+            Dock = DockStyle.Right,
+            TextAlign = ContentAlignment.MiddleRight,
+            Font = new Font("Segoe UI", 9f),
+        };
 
         pnlOtherOptions = new System.Windows.Forms.Panel
         {
@@ -205,9 +234,11 @@ partial class MainForm
             Height = 48,
             Padding = new Padding(8, 6, 8, 6),
         };
-        // First added = rightmost: GDI Print, Embedded Preview
+        // First added = rightmost: PrintPreviewDialog() Print, PrintDialog() Print, quality dropdown, label
         pnlOtherOptions.Controls.Add(btnGdiPrint);
         pnlOtherOptions.Controls.Add(btnEmbeddedPreview);
+        pnlOtherOptions.Controls.Add(cboQuality);
+        pnlOtherOptions.Controls.Add(lblPrintQuality);
 
         gbOtherPrintOptions = new System.Windows.Forms.GroupBox
         {
