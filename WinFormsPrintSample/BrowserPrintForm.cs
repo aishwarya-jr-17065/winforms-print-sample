@@ -17,6 +17,7 @@ internal sealed class BrowserPrintForm : Form
     private readonly Button _btnPrint;
     private readonly Label _lblStatus;
     private bool _ready;
+    private bool _afterprintHooked;
 
     public BrowserPrintForm(string html, CoreWebView2Environment env)
     {
@@ -109,7 +110,11 @@ internal sealed class BrowserPrintForm : Form
             // Inject a window.onafterprint listener so that when the browser
             // print dialog is closed (after printing or cancellation) the host
             // is notified via the WebView2 message channel.
-            _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+            if (!_afterprintHooked)
+            {
+                _afterprintHooked = true;
+                _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+            }
             await _webView.CoreWebView2.ExecuteScriptAsync(
                 "window.onafterprint = () => window.chrome.webview.postMessage('afterprint');");
 
@@ -147,7 +152,7 @@ internal sealed class BrowserPrintForm : Form
 
     private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
-        if (e.TryGetWebMessageAsString() == "afterprint")
+        if (e.TryGetWebMessageAsString() == "afterprint" && IsHandleCreated && !IsDisposed)
         {
             // Marshal back to the UI thread in case the event arrives off-thread.
             BeginInvoke(Close);
