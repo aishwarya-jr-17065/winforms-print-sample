@@ -106,6 +106,13 @@ internal sealed class BrowserPrintForm : Form
 
             await tcs.Task;
 
+            // Inject a window.onafterprint listener so that when the browser
+            // print dialog is closed (after printing or cancellation) the host
+            // is notified via the WebView2 message channel.
+            _webView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
+            await _webView.CoreWebView2.ExecuteScriptAsync(
+                "window.onafterprint = () => window.chrome.webview.postMessage('afterprint');");
+
             _ready = true;
             _lblStatus.Text = "Ready — click Print… to open the browser print dialog.";
             _btnPrint.Enabled = true;
@@ -135,6 +142,19 @@ internal sealed class BrowserPrintForm : Form
     }
 
     // -----------------------------------------------------------------------
+    // WebMessage handler: close the form when window.onafterprint fires
+    // -----------------------------------------------------------------------
+
+    private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    {
+        if (e.TryGetWebMessageAsString() == "afterprint")
+        {
+            // Marshal back to the UI thread in case the event arrives off-thread.
+            BeginInvoke(Close);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Key handler: Escape closes the full-screen form
     // -----------------------------------------------------------------------
 
@@ -154,7 +174,12 @@ internal sealed class BrowserPrintForm : Form
     protected override void Dispose(bool disposing)
     {
         if (disposing)
+        {
+            if (_webView.CoreWebView2 is not null)
+                _webView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived;
+
             _webView.Dispose();
+        }
 
         base.Dispose(disposing);
     }
