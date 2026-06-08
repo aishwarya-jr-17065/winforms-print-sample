@@ -121,6 +121,9 @@ internal sealed class BrowserPrintForm : Form
             _ready = true;
             _lblStatus.Text = "Ready — click Print… to open the browser print dialog.";
             _btnPrint.Enabled = true;
+
+            // Automatically open the browser print dialog once content is loaded.
+            _webView.CoreWebView2.ShowPrintUI(CoreWebView2PrintDialogKind.Browser);
         }
         catch (Exception ex)
         {
@@ -155,7 +158,7 @@ internal sealed class BrowserPrintForm : Form
         if (e.TryGetWebMessageAsString() == "afterprint" && IsHandleCreated && !IsDisposed)
         {
             // Marshal back to the UI thread in case the event arrives off-thread.
-            BeginInvoke(Close);
+            // BeginInvoke(Close);
         }
     }
 
